@@ -29,6 +29,10 @@ type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
+type VirtualKeyboardLike = EventTarget & {
+  overlaysContent: boolean;
+  boundingRect: DOMRectReadOnly;
+};
 
 declare global {
   interface WindowEventMap {
@@ -335,24 +339,35 @@ function TtydFramePage() {
   const navigate = useNavigate();
   const pageRef = useRef<HTMLElement>(null);
   useEffect(() => {
+    const virtualKeyboard = (navigator as Navigator & { virtualKeyboard?: VirtualKeyboardLike }).virtualKeyboard;
     const syncVisibleArea = () => {
       const viewport = window.visualViewport;
-      const visibleHeight = viewport ? Math.max(220, Math.min(window.innerHeight, viewport.height + viewport.offsetTop)) : window.innerHeight;
+      const keyboardHeight = virtualKeyboard?.boundingRect?.height ?? 0;
+      const visibleHeight = keyboardHeight > 80
+        ? Math.max(220, window.innerHeight - keyboardHeight)
+        : viewport ? Math.max(220, Math.min(window.innerHeight, viewport.height + viewport.offsetTop)) : window.innerHeight;
       const top = viewport ? viewport.offsetTop : 0;
       pageRef.current?.style.setProperty("--app-visible-height", `${visibleHeight}px`);
       pageRef.current?.style.setProperty("--app-visible-top", `${top}px`);
     };
+    try {
+      if (virtualKeyboard) virtualKeyboard.overlaysContent = true;
+    } catch {
+      // Some Android WebViews expose the API without allowing this flag.
+    }
     syncVisibleArea();
     window.addEventListener("resize", syncVisibleArea);
     window.addEventListener("orientationchange", syncVisibleArea);
     window.visualViewport?.addEventListener("resize", syncVisibleArea);
     window.visualViewport?.addEventListener("scroll", syncVisibleArea);
+    virtualKeyboard?.addEventListener("geometrychange", syncVisibleArea);
     const timers = [80, 260, 600, 1000].map((delay) => window.setTimeout(syncVisibleArea, delay));
     return () => {
       window.removeEventListener("resize", syncVisibleArea);
       window.removeEventListener("orientationchange", syncVisibleArea);
       window.visualViewport?.removeEventListener("resize", syncVisibleArea);
       window.visualViewport?.removeEventListener("scroll", syncVisibleArea);
+      virtualKeyboard?.removeEventListener("geometrychange", syncVisibleArea);
       timers.forEach(window.clearTimeout);
     };
   }, []);

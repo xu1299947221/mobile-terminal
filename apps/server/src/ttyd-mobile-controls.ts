@@ -49,9 +49,11 @@ function mobileControls(projectId: string): string {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
   }
+  body.mt-keyboard-fit #terminal-container,
   body.mt-ios-keyboard-fit #terminal-container {
     height: var(--mt-keyboard-visible-height, 100vh) !important;
   }
+  body.mt-keyboard-fit #terminal-container .terminal,
   body.mt-ios-keyboard-fit #terminal-container .terminal {
     height: calc(var(--mt-keyboard-visible-height, 100vh) - 10px) !important;
   }
@@ -341,6 +343,7 @@ function mobileControls(projectId: string): string {
   }
 
   function visibleViewportHeight() {
+    if (keyboardRect && keyboardRect.height > 80) return Math.max(160, window.innerHeight - keyboardRect.height);
     if (!window.visualViewport) return window.innerHeight;
     return Math.max(160, Math.min(window.innerHeight, (window.visualViewport.offsetTop || 0) + window.visualViewport.height));
   }
@@ -352,7 +355,8 @@ function mobileControls(projectId: string): string {
   }
 
   function setTerminalKeyboardFit(enabled) {
-    if (supportsVirtualKeyboard) return;
+    if (supportsVirtualKeyboard && !(keyboardRect && keyboardRect.height > 80)) return;
+    document.body.classList.toggle("mt-keyboard-fit", enabled);
     document.body.classList.toggle("mt-ios-keyboard-fit", enabled);
     if (enabled) {
       document.documentElement.style.setProperty("--mt-keyboard-visible-height", visibleViewportHeight() + "px");
