@@ -52,6 +52,42 @@ http://127.0.0.1:3020
 https://terminal.example.com -> Cloudflare 隧道 -> http://127.0.0.1:3020
 ```
 
+Cloudflare Dashboard 操作步骤：
+
+1. 登录 Cloudflare Dashboard。
+2. 进入 `Zero Trust`。
+3. 进入 `Networks` -> `Tunnels`。
+4. 选择当前服务器使用的 tunnel。
+5. 进入 `Public Hostnames`。
+6. 新增或编辑一条公开主机名：
+
+```text
+Subdomain: terminal
+Domain: example.com
+Type: HTTP
+URL: 127.0.0.1:3020
+```
+
+实际部署时把 `terminal.example.com` 换成自己的公网域名。不要把真实域名写入公开仓库。
+
+服务端需要在本机 env 文件里配置公网 Origin，用于写接口和 WebSocket 的来源校验：
+
+```env
+MOBILE_TERMINAL_PUBLIC_ORIGIN=https://terminal.example.com
+```
+
+当前 systemd 服务默认读取：
+
+```text
+~/.config/mobile-terminal/mobile-terminal.env
+```
+
+修改 env 后重启：
+
+```bash
+systemctl --user restart mobile-terminal
+```
+
 如果 Cloudflare 后台的公开主机名（Public Hostname）还指向旧的裸 `ttyd`，需要改成：
 
 ```text
