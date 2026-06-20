@@ -63,9 +63,6 @@ function mobileControls(projectId: string): string {
     -webkit-user-select: none;
     font: 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
-  body.mt-mobile-input-control .xterm-helper-textarea {
-    pointer-events: none !important;
-  }
   #mt-ttyd-controller.mt-collapsed {
     width: auto;
     max-width: calc(100vw - 20px);
@@ -436,7 +433,7 @@ function mobileControls(projectId: string): string {
   }
 
   function keyboardVisible() {
-    if (document.activeElement !== input) return false;
+    if (!isTerminalInputFocused()) return false;
     if (keyboardRect && keyboardRect.height > 80) return true;
     if (!window.visualViewport) return false;
     var hiddenHeight = window.innerHeight - window.visualViewport.height - (window.visualViewport.offsetTop || 0);
@@ -500,23 +497,31 @@ function mobileControls(projectId: string): string {
     return Boolean(target && target !== input && target.classList && target.classList.contains("xterm-helper-textarea"));
   }
 
-  function redirectNativeTerminalFocus(event) {
-    if (event.target && controller.contains(event.target)) return;
-    if (isNativeXtermInput(event.target) || (event.target && event.target.closest && event.target.closest("#terminal-container"))) {
-      event.preventDefault();
-      event.stopPropagation();
-      openKeyboard();
+  function isTerminalInputFocused() {
+    return document.activeElement === input || isNativeXtermInput(document.activeElement);
+  }
+
+  function syncNativeTerminalKeyboard() {
+    if (isNativeXtermInput(document.activeElement)) {
+      setKeyboardState("keyboard-opening");
+      setTimeout(syncKeyboardLayout, 80);
+      setTimeout(syncKeyboardLayout, 320);
+      return;
+    }
+    if (document.activeElement !== input && keyboardState !== "idle") {
+      setKeyboardState("idle");
+      setTerminalKeyboardFit(false);
     }
   }
 
-  function installNativeInputRedirect() {
-    document.body.classList.add("mt-mobile-input-control");
-    document.addEventListener("pointerdown", redirectNativeTerminalFocus, { capture: true });
-    document.addEventListener("touchstart", redirectNativeTerminalFocus, { capture: true, passive: false });
+  function installNativeInputFit() {
     document.addEventListener("focusin", function (event) {
       if (!isNativeXtermInput(event.target)) return;
-      event.stopPropagation();
-      openKeyboard();
+      syncNativeTerminalKeyboard();
+    }, { capture: true });
+    document.addEventListener("focusout", function (event) {
+      if (!isNativeXtermInput(event.target)) return;
+      setTimeout(syncNativeTerminalKeyboard, 80);
     }, { capture: true });
   }
 
@@ -813,7 +818,7 @@ function mobileControls(projectId: string): string {
 
   tryEnableVirtualKeyboard();
   setModeStatus();
-  installNativeInputRedirect();
+  installNativeInputFit();
   installViewportScrollBridge();
   resetCaptureInput();
   restorePosition();
