@@ -36,6 +36,12 @@ function mobileControls(projectId: string): string {
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
   }
+  body.mt-ios-keyboard-fit #terminal-container {
+    height: var(--mt-keyboard-visible-height, 100vh) !important;
+  }
+  body.mt-ios-keyboard-fit #terminal-container .terminal {
+    height: calc(var(--mt-keyboard-visible-height, 100vh) - 10px) !important;
+  }
   #mt-ttyd-controller {
     position: fixed;
     right: calc(10px + var(--mt-safe-right));
@@ -321,6 +327,28 @@ function mobileControls(projectId: string): string {
     return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
   }
 
+  function visibleViewportHeight() {
+    if (!window.visualViewport) return window.innerHeight;
+    return Math.max(160, Math.min(window.innerHeight, (window.visualViewport.offsetTop || 0) + window.visualViewport.height));
+  }
+
+  function notifyTerminalResize() {
+    setTimeout(function () {
+      window.dispatchEvent(new Event("resize"));
+    }, 60);
+  }
+
+  function setTerminalKeyboardFit(enabled) {
+    if (supportsVirtualKeyboard) return;
+    document.body.classList.toggle("mt-ios-keyboard-fit", enabled);
+    if (enabled) {
+      document.documentElement.style.setProperty("--mt-keyboard-visible-height", visibleViewportHeight() + "px");
+    } else {
+      document.documentElement.style.removeProperty("--mt-keyboard-visible-height");
+    }
+    notifyTerminalResize();
+  }
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -436,11 +464,13 @@ function mobileControls(projectId: string): string {
     }
     if (keyboardVisible()) {
       setKeyboardState("keyboard-open");
+      setTerminalKeyboardFit(true);
       placeForKeyboard();
       return;
     }
     if (keyboardState !== "idle") {
       setKeyboardState("idle");
+      setTerminalKeyboardFit(false);
     }
   }
 
@@ -458,6 +488,7 @@ function mobileControls(projectId: string): string {
   function hideKeyboard() {
     input.blur();
     setKeyboardState("idle");
+    setTerminalKeyboardFit(false);
     showStatus("键盘已收起");
     setTimeout(clampCurrentPosition, 120);
   }
