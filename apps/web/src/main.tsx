@@ -4,7 +4,7 @@ import { Link, Navigate, Route, BrowserRouter as Router, Routes, useNavigate, us
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { Copy, Download, ExternalLink, LogOut, Maximize2, Minimize2, Play, Plus, RefreshCcw, Save, Send, Trash2, Users } from "lucide-react";
+import { Copy, Download, ExternalLink, LogOut, Maximize2, Minimize2, Play, Plus, RefreshCcw, Save, Send, Smartphone, Trash2, Users } from "lucide-react";
 import type { DefaultCommand, ProjectWithPermission, Role, User } from "@mobile-terminal/shared";
 import { api, type AdminContext } from "./api";
 import "./styles.css";
@@ -25,6 +25,16 @@ type UserFormState = {
   password: string;
   role: Role;
 };
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+declare global {
+  interface WindowEventMap {
+    beforeinstallprompt: BeforeInstallPromptEvent;
+  }
+}
 
 const dateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai",
@@ -114,6 +124,82 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 }
 
+function usePwaDisplayMode() {
+  const [standalone, setStandalone] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const navigatorStandalone = Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+      setStandalone(navigatorStandalone || window.matchMedia("(display-mode: fullscreen)").matches || window.matchMedia("(display-mode: standalone)").matches);
+    };
+    check();
+    const fullscreenQuery = window.matchMedia("(display-mode: fullscreen)");
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    fullscreenQuery.addEventListener("change", check);
+    standaloneQuery.addEventListener("change", check);
+    return () => {
+      fullscreenQuery.removeEventListener("change", check);
+      standaloneQuery.removeEventListener("change", check);
+    };
+  }, []);
+  return standalone;
+}
+
+function PwaControls() {
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [message, setMessage] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
+  const standalone = usePwaDisplayMode();
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const canFullscreen = Boolean(document.documentElement.requestFullscreen);
+  useEffect(() => {
+    const onBeforeInstallPrompt = (event: BeforeInstallPromptEvent) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onFullscreenChange = () => setFullscreen(Boolean(document.fullscreenElement));
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, []);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  }, []);
+  const launch = async () => {
+    setMessage("");
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setInstallPrompt(null);
+      setMessage(choice.outcome === "accepted" ? "已安装到桌面" : "已取消安装");
+      return;
+    }
+    if (canFullscreen && !document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setMessage("已进入全屏");
+        return;
+      } catch {
+        // Continue to platform-specific guidance below.
+      }
+    }
+    setMessage(isIos ? "iOS 请点分享，再添加到主屏幕" : "浏览器菜单里选择安装应用或添加到主屏幕");
+  };
+  return (
+    <div className="pwa-strip">
+      <div>
+        <strong>{standalone ? "已用应用模式打开" : "手机全屏模式"}</strong>
+        <span>{standalone ? "当前已隐藏浏览器工具栏" : isIos ? "iOS 从主屏幕打开效果最好" : "安卓可安装到桌面或进入全屏"}</span>
+      </div>
+      <button className="ghost" onClick={launch}><Smartphone size={16} />{standalone || fullscreen ? "全屏中" : "安装/全屏"}</button>
+      {message && <p>{message}</p>}
+    </div>
+  );
+}
+
 function AccessGate({ onVerified }: { onVerified: (username: string) => void }) {
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState("");
@@ -185,6 +271,7 @@ function Projects({ user }: { user: User }) {
         <h1>项目</h1>
         <button onClick={load}><RefreshCcw size={16} />刷新</button>
       </div>
+      <PwaControls />
       {error && <p className="error">{error}</p>}
       <div className="project-list">
         {projects.map((project) => (

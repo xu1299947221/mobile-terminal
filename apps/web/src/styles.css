@@ -129,6 +129,30 @@ button:disabled {
   align-items: center;
 }
 
+.pwa-strip {
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  background: white;
+  border: 1px solid #d9dee7;
+  border-radius: 8px;
+}
+
+.pwa-strip span,
+.pwa-strip p {
+  display: block;
+  margin: 3px 0 0;
+  color: #5b6472;
+  font-size: 13px;
+}
+
+.pwa-strip p {
+  grid-column: 1 / -1;
+}
+
 .login {
   min-height: 100vh;
   display: grid;
@@ -357,6 +381,15 @@ textarea {
 
   .keybar button {
     flex: 1 0 auto;
+  }
+
+  .pwa-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .pwa-strip button {
+    width: 100%;
+    justify-content: center;
   }
 
   .admin-layout {
