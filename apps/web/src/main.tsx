@@ -140,7 +140,8 @@ function AccessGate({ onVerified }: { onVerified: (username: string) => void }) 
   );
 }
 
-function Login({ username, onLogin }: { username: string; onLogin: (user: User) => void }) {
+function Login({ initialUsername, onLogin }: { initialUsername: string; onLogin: (user: User) => void }) {
+  const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   return (
@@ -162,7 +163,7 @@ function Login({ username, onLogin }: { username: string; onLogin: (user: User) 
         }}
       >
         <h1>mobile-terminal</h1>
-        <label>用户名<input value={username} readOnly autoComplete="username" /></label>
+        <label>用户名<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required /></label>
         <label>密码<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
         {error && <p className="error">{error}</p>}
         <button type="submit">登录</button>
@@ -841,7 +842,7 @@ function App() {
     return <AccessGate onVerified={(username) => auth.setGate({ verified: true, username, loading: false })} />;
   }
   if (!auth.user) {
-    return <Login username={auth.gate.username ?? ""} onLogin={(user) => { auth.setState({ user, loading: false }); auth.setGate({ verified: true, username: user.username, loading: false }); navigate("/projects"); }} />;
+    return <Login initialUsername={auth.gate.username ?? ""} onLogin={(user) => { auth.setState({ user, loading: false }); auth.setGate({ verified: true, username: user.username, loading: false }); navigate("/projects"); }} />;
   }
   return <Shell user={auth.user} onLogout={async () => {
     try {

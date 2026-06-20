@@ -125,7 +125,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/auth/login", async (request, reply) => {
     const body = LoginRequestSchema.parse(request.body);
     const gate = readGateToken(request.cookies?.mt_gate);
-    if (!gate || gate.username !== body.username.trim().toLowerCase()) {
+    if (!gate) {
       return reply.code(403).send({ error: "forbidden", message: "请先完成访问验证" });
     }
     if (!checkLoginRateLimit(request, reply, body.username)) return;
