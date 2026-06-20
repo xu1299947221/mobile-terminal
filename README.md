@@ -14,6 +14,12 @@
 - 手机断开后，服务器里的任务继续运行。
 - 重新打开后，仍然回到同一个项目会话。
 
+## 截图
+
+手机项目页包含 PWA 全屏入口、延迟测试、项目会话入口和 Codex/Claude 启动按钮。
+
+![mobile-terminal 项目页](docs/assets/mobile-projects.png)
+
 ## 当前部署信息
 
 - 项目目录：`/home/data/connect/mobile-terminal`
@@ -100,8 +106,22 @@ MOBILE_TERMINAL_PUBLIC_ORIGIN=https://terminal.example.com
 - 登录页
 - 项目列表
 - 自研 xterm.js 终端
-- ttyd 备用终端
+- ttyd 主力终端入口
 - 管理后台
+
+## 网络和延迟
+
+项目首页内置“延迟测试”面板，可以在切换 Wi-Fi、蜂窝网络、VPN 节点或公网入口后，对比当前链路表现。
+
+重点看：
+
+```text
+WS 往返
+```
+
+它最接近手机终端输入和服务端回显的实际体感。HTTP 延迟主要反映普通 API 请求，WS 建连只影响打开连接那一下。
+
+详细说明见 [网络、Cloudflare 和延迟优化](docs/network-latency.md)。
 
 ## 手机浏览器和 PWA
 
@@ -207,6 +227,7 @@ bash scripts/docker-up.sh
 - [Docker 部署](docs/docker.md)
 - [Cloudflare Tunnel Docker 独立使用说明](docs/cloudflared-docker.md)
 - [手机浏览器和 PWA 使用说明](docs/mobile-browser.md)
+- [网络、Cloudflare 和延迟优化](docs/network-latency.md)
 - [ttyd 手机端输入体验优化方案](docs/ttyd-mobile-input-plan.md)
 - [安全设计](docs/security.md)
 - [规格文档](/home/data/connect/mobile-terminal-spec.md)

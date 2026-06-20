@@ -518,6 +518,14 @@ terminal.example.com -> http://mobile-terminal:3020
 - Tunnel 只是转发流量，不等于业务系统已经安全。
 - 如果业务服务有 WebSocket，需要确认服务本身支持反向代理场景。
 
+## Free 套餐和延迟
+
+Cloudflare Free 没有公开固定的每月流量额度。对 `mobile-terminal` 这种终端文本、WebSocket 回显和少量 API 请求来说，流量很小，通常可以长期使用。
+
+不要把 Free Tunnel 当作网盘、下载站、视频流或大文件分发通道。Cloudflare Free 没有 SLA，也不能保证国内访问一定落到低延迟节点。
+
+如果国内访问延迟不理想，优先用应用首页的“延迟测试”面板对比网络/VPN 节点。需要更稳定低延迟时，可以考虑香港、日本或新加坡 VPS 自建中转。详细说明见 [网络、Cloudflare 和延迟优化](network-latency.md)。
+
 ## 常见问题
 
 ### cloudflared 容器启动了，但域名打不开
