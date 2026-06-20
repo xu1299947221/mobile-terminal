@@ -184,6 +184,18 @@ tmux 检查：
 tmux list-sessions
 ```
 
+## 手机浏览器安装和全屏
+
+手机端可以直接用浏览器访问，也可以作为 PWA / 主屏幕快捷方式打开。详细浏览器差异和排障见 [手机浏览器和 PWA 使用说明](mobile-browser.md)。
+
+已知注意事项：
+
+- iOS / iPadOS 推荐 Safari -> 分享 -> 添加到主屏幕。
+- Android Edge / Chrome / Samsung Internet 可以尝试添加到主屏幕。
+- 国产 Android ROM 可能需要给浏览器开启“创建快捷方式 / 桌面快捷方式 / 添加主屏幕快捷方式”权限。
+- Chrome Android 在国内网络下可能卡在“正在安装”，这通常和 WebAPK / Google 服务链路或系统权限有关。
+- Edge 如果点安装后跳到应用详情页，通常需要在该页面给 Edge 开启“创建快捷方式”权限。
+
 ## tmux 会话进入和退出
 
 每个项目会绑定一个持久 `tmux` 会话。手机端、`ttyd` 备用终端和服务器上手动 attach 进去看到的是同一个会话。

@@ -103,6 +103,14 @@ MOBILE_TERMINAL_PUBLIC_ORIGIN=https://terminal.example.com
 - ttyd 备用终端
 - 管理后台
 
+## 手机浏览器和 PWA
+
+iOS 推荐使用 Safari 的“添加到主屏幕”。Android 推荐优先尝试 Edge、Chrome 或 Samsung Internet。
+
+国产 Android ROM 可能需要给浏览器开启“创建快捷方式 / 桌面快捷方式 / 添加主屏幕快捷方式”权限，否则会出现“正在安装”、安装后无图标、或跳到浏览器应用详情页后没有后续操作。
+
+详细说明见 [手机浏览器和 PWA 使用说明](docs/mobile-browser.md)。
+
 ## 管理员账号
 
 首次部署后通过下面命令创建或重置管理员账号：
@@ -198,6 +206,7 @@ bash scripts/docker-up.sh
 - [部署说明](docs/setup.md)
 - [Docker 部署](docs/docker.md)
 - [Cloudflare Tunnel Docker 独立使用说明](docs/cloudflared-docker.md)
+- [手机浏览器和 PWA 使用说明](docs/mobile-browser.md)
 - [ttyd 手机端输入体验优化方案](docs/ttyd-mobile-input-plan.md)
 - [安全设计](docs/security.md)
 - [规格文档](/home/data/connect/mobile-terminal-spec.md)
