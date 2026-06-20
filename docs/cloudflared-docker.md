@@ -17,6 +17,25 @@
 
 `cloudflared` 容器只负责转发，不负责登录鉴权、不负责业务逻辑。你的业务服务仍然需要自己做好认证和权限控制。
 
+## 交互式启动脚本
+
+仓库里提供了一个可单独拷走的示例目录：
+
+```text
+examples/cloudflared-docker
+```
+
+使用：
+
+```bash
+cd examples/cloudflared-docker
+bash tunnel-up.sh
+```
+
+脚本会提示填写 `Cloudflare Tunnel token`，并生成本地 `.env` 文件。`.env` 不要提交进仓库。
+
+注意：这个脚本只配置并启动 `cloudflared` 容器。域名转发到哪个内网地址，仍然在 Cloudflare 后台 `Public Hostnames` 里配置。
+
 ## 最小 compose
 
 创建目录：
