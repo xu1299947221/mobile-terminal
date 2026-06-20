@@ -18,17 +18,13 @@ Windows 用户建议：
 
 ## 快速启动
 
-一键初始化：
+交互式一键部署：
 
 ```bash
 bash scripts/docker-up.sh
 ```
 
-首次运行会自动生成 `.env` 和随机 `MOBILE_TERMINAL_COOKIE_SECRET`，然后提示你编辑必填项。编辑完成后再次运行：
-
-```bash
-bash scripts/docker-up.sh
-```
+脚本会逐项提示需要填写的内容。直接回车会使用默认值；密码、随机密钥和 Cloudflare token 不会回显。填写完成后脚本会生成 `.env`，并询问是否立即执行 `docker compose --profile tunnel up -d --build`。
 
 手动方式是复制环境变量模板：
 
