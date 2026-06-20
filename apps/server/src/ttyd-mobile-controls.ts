@@ -306,7 +306,7 @@ function mobileControls(projectId: string): string {
   }
 
   function viewportBounds() {
-    var focused = document.activeElement === input;
+    var focused = isTerminalInputFocused();
     if (focused && keyboardRect && keyboardRect.height > 80) {
       return {
         left: 0,
@@ -455,6 +455,12 @@ function mobileControls(projectId: string): string {
       var top = bounds.top + bounds.height - rect.height - 8;
       place(left, top);
     });
+  }
+
+  function followKeyboardViewport() {
+    if (!keyboardVisible()) return;
+    setTerminalKeyboardFit(true);
+    placeForKeyboard();
   }
 
   function syncKeyboardLayout() {
@@ -817,7 +823,10 @@ function mobileControls(projectId: string): string {
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", function () {
       syncKeyboardLayout();
-      if (keyboardVisible()) placeForKeyboard();
+      followKeyboardViewport();
+    });
+    window.visualViewport.addEventListener("scroll", function () {
+      followKeyboardViewport();
     });
   }
 
