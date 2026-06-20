@@ -63,6 +63,9 @@ function mobileControls(projectId: string): string {
     -webkit-user-select: none;
     font: 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
+  body.mt-mobile-input-control .xterm-helper-textarea {
+    pointer-events: none !important;
+  }
   #mt-ttyd-controller.mt-collapsed {
     width: auto;
     max-width: calc(100vw - 20px);
@@ -493,6 +496,30 @@ function mobileControls(projectId: string): string {
     setTimeout(clampCurrentPosition, 120);
   }
 
+  function isNativeXtermInput(target) {
+    return Boolean(target && target !== input && target.classList && target.classList.contains("xterm-helper-textarea"));
+  }
+
+  function redirectNativeTerminalFocus(event) {
+    if (event.target && controller.contains(event.target)) return;
+    if (isNativeXtermInput(event.target) || (event.target && event.target.closest && event.target.closest("#terminal-container"))) {
+      event.preventDefault();
+      event.stopPropagation();
+      openKeyboard();
+    }
+  }
+
+  function installNativeInputRedirect() {
+    document.body.classList.add("mt-mobile-input-control");
+    document.addEventListener("pointerdown", redirectNativeTerminalFocus, { capture: true });
+    document.addEventListener("touchstart", redirectNativeTerminalFocus, { capture: true, passive: false });
+    document.addEventListener("focusin", function (event) {
+      if (!isNativeXtermInput(event.target)) return;
+      event.stopPropagation();
+      openKeyboard();
+    }, { capture: true });
+  }
+
   function resetCaptureInput() {
     input.value = sentinel;
     try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
@@ -786,6 +813,7 @@ function mobileControls(projectId: string): string {
 
   tryEnableVirtualKeyboard();
   setModeStatus();
+  installNativeInputRedirect();
   installViewportScrollBridge();
   resetCaptureInput();
   restorePosition();
