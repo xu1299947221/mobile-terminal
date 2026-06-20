@@ -236,10 +236,16 @@ function mobileControls(projectId: string): string {
   </div>
   <div id="mt-ttyd-quick-panel" class="mt-panel">
     <div class="mt-row">
+      <button id="mt-ttyd-reconnect" class="mt-key" type="button">重连</button>
       <button class="mt-key" type="button" data-key="C-c">Ctrl-C</button>
       <button class="mt-key" type="button" data-key="C-d">Ctrl-D</button>
       <button class="mt-key" type="button" data-key="Home">Home</button>
+    </div>
+    <div class="mt-row">
       <button class="mt-key" type="button" data-key="End">End</button>
+      <button class="mt-key" type="button" data-key="Escape">Esc</button>
+      <button class="mt-key" type="button" data-key="Tab">Tab</button>
+      <button class="mt-key" type="button" data-key="Enter">Enter</button>
     </div>
     <div class="mt-dpad">
       <span class="mt-empty"></span>
@@ -268,6 +274,7 @@ function mobileControls(projectId: string): string {
   var historyButton = document.getElementById("mt-ttyd-history");
   var collapseButton = document.getElementById("mt-ttyd-collapse");
   var hideKeyboardButton = document.getElementById("mt-ttyd-hide-keyboard");
+  var reconnectButton = document.getElementById("mt-ttyd-reconnect");
   var gestureToggle = document.getElementById("mt-ttyd-gesture-toggle");
   var status = document.getElementById("mt-ttyd-status");
   var input = document.getElementById("mt-ttyd-input");
@@ -598,6 +605,13 @@ function mobileControls(projectId: string): string {
     event.preventDefault();
   }
 
+  function reconnectTtyd() {
+    showStatus("正在重连...");
+    window.setTimeout(function () {
+      window.location.reload();
+    }, 60);
+  }
+
   var historyScrollInFlight = false;
   var queuedHistoryLines = 0;
   var queuedHistoryDirection = null;
@@ -732,6 +746,13 @@ function mobileControls(projectId: string): string {
   hideKeyboardButton.addEventListener("click", function () {
     hideKeyboard();
   });
+  if (reconnectButton) {
+    reconnectButton.addEventListener("pointerdown", keepCurrentFocus);
+    reconnectButton.addEventListener("mousedown", keepCurrentFocus);
+    reconnectButton.addEventListener("click", function () {
+      reconnectTtyd();
+    });
+  }
   if (gestureToggle) {
     updateGestureToggle();
     gestureToggle.addEventListener("click", function () {
@@ -819,6 +840,12 @@ function mobileControls(projectId: string): string {
   input.addEventListener("paste", function () {
     setTimeout(function () { flushVisibleInput("已粘贴"); }, 0);
   });
+
+  document.addEventListener("dblclick", function (event) {
+    if (event.target && controller.contains(event.target)) return;
+    event.preventDefault();
+    reconnectTtyd();
+  }, { capture: true });
 
   document.querySelectorAll("#mt-ttyd-controller [data-key]").forEach(function (button) {
     button.addEventListener("pointerdown", keepCurrentFocus);
