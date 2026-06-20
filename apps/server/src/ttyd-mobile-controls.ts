@@ -667,7 +667,7 @@ function mobileControls(projectId: string): string {
       if (lastY === null || !event.touches || !event.touches.length) return;
       if (!gestureScrollEnabled) return;
       var nextY = event.touches[0].clientY;
-      scrollTerminal(lastY - nextY);
+      scrollTerminal(nextY - lastY);
       lastY = nextY;
     }, { capture: true, passive: false });
     document.addEventListener("touchend", function () {
