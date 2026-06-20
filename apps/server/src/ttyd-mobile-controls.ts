@@ -245,7 +245,7 @@ function mobileControls(projectId: string): string {
       <button class="mt-key" type="button" data-key="End">End</button>
       <button class="mt-key" type="button" data-key="Escape">Esc</button>
       <button class="mt-key" type="button" data-key="Tab">Tab</button>
-      <button class="mt-key" type="button" data-key="Enter">Enter</button>
+      <button class="mt-key" type="button" data-key="S-Tab">Shift-Tab</button>
     </div>
     <div class="mt-dpad">
       <span class="mt-empty"></span>
@@ -830,6 +830,12 @@ function mobileControls(projectId: string): string {
         resetCaptureInput();
         return;
       }
+    }
+    if (event.key === "Tab" && event.shiftKey) {
+      event.preventDefault();
+      sendKey("S-Tab", "已发送按键");
+      resetCaptureInput();
+      return;
     }
     var key = specialKeys[event.key];
     if (!key) return;
