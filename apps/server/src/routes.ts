@@ -9,7 +9,8 @@ import {
   TerminalScrollSchema,
   TerminalInputSchema,
   UpdateProjectRequestSchema,
-  UpdateUserRequestSchema
+  UpdateUserRequestSchema,
+  VerifyGateRequestSchema
 } from "@mobile-terminal/shared";
 import { audit, db, id, nowIso } from "./db.js";
 import {
@@ -21,7 +22,10 @@ import {
   requireAuth,
   sessionCookieOptions,
   verifyPassword,
-  publicUser
+  publicUser,
+  createGateToken,
+  gateCookieOptions,
+  readGateToken
 } from "./auth.js";
 import { can, managedProjectIds } from "./permissions.js";
 import { assertProjectAccess, getProjectById, getProjectBySlug, mapProject, validateDirectory, visibleProjects } from "./projects.js";
@@ -68,8 +72,33 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  app.get("/api/auth/gate", async (request) => {
+    if (request.user) return { verified: true, username: request.user.username, authenticated: true };
+    const gate = readGateToken(request.cookies?.mt_gate);
+    return { verified: Boolean(gate), username: gate?.username ?? null, authenticated: false };
+  });
+
+  app.post("/api/auth/gate/verify", async (request, reply) => {
+    const body = VerifyGateRequestSchema.parse(request.body);
+    const username = body.answer.trim().toLowerCase();
+    const row = db.prepare("SELECT username FROM users WHERE lower(username) = ? AND role != 'admin' AND enabled = 1").get(username) as
+      | { username: string }
+      | undefined;
+    if (!row) {
+      audit({ action: "gate_verify_failed", actorUsername: username });
+      return reply.code(401).send({ error: "unauthorized", message: "验证失败" });
+    }
+    reply.setCookie("mt_gate", createGateToken(row.username), gateCookieOptions());
+    audit({ action: "gate_verify_success", actorUsername: row.username });
+    return { verified: true, username: row.username };
+  });
+
   app.post("/api/auth/login", async (request, reply) => {
     const body = LoginRequestSchema.parse(request.body);
+    const gate = readGateToken(request.cookies?.mt_gate);
+    if (!gate || gate.username !== body.username.trim().toLowerCase()) {
+      return reply.code(403).send({ error: "forbidden", message: "请先完成访问验证" });
+    }
     if (!checkLoginRateLimit(request, reply, body.username)) return;
     const row = getUserPassword(body.username);
     if (!row || !(await verifyPassword(row.password_hash, body.password))) {
@@ -89,6 +118,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     const token = request.cookies?.[app.configCookieName];
     if (token) deleteSession(token);
     reply.clearCookie(app.configCookieName, { path: "/" });
+    reply.clearCookie("mt_gate", { path: "/" });
     return { ok: true };
   });
 

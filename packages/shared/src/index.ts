@@ -56,6 +56,10 @@ export const LoginRequestSchema = z.object({
   password: z.string().min(1)
 });
 
+export const VerifyGateRequestSchema = z.object({
+  answer: z.string().min(1).max(100)
+});
+
 export const CreateUserRequestSchema = z.object({
   username: z.string().min(2).max(64).regex(/^[a-zA-Z0-9_.@-]+$/),
   displayName: z.string().min(1).max(100),

@@ -7,6 +7,12 @@ export type AdminContext = {
   managedProjectIds: string[];
 };
 
+export type GateStatus = {
+  verified: boolean;
+  username: string | null;
+  authenticated?: boolean;
+};
+
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.body && !headers.has("Content-Type")) {
@@ -27,6 +33,9 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   login: (username: string, password: string) =>
     request<{ user: User }>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  gateStatus: () => request<GateStatus>("/api/auth/gate"),
+  verifyGate: (answer: string) =>
+    request<{ verified: true; username: string }>("/api/auth/gate/verify", { method: "POST", body: JSON.stringify({ answer }) }),
   logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST", body: JSON.stringify({}) }),
   me: () => request<{ user: User }>("/api/me"),
   projects: () => request<{ projects: ProjectWithPermission[] }>("/api/projects"),

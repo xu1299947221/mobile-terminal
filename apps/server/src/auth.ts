@@ -6,9 +6,14 @@ import { db, id, nowIso } from "./db.js";
 import { config } from "./config.js";
 
 const sessionTtlMs = 1000 * 60 * 60 * 24 * 14;
+const gateTtlMs = 1000 * 60 * 30;
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function signGateValue(username: string, expiresAt: number): string {
+  return crypto.createHmac("sha256", config.cookieSecret).update(`${username}:${expiresAt}`).digest("base64url");
 }
 
 export function publicUser(row: any): User {
@@ -79,6 +84,37 @@ export function sessionCookieOptions() {
     sameSite: "lax" as const,
     maxAge: Math.floor(sessionTtlMs / 1000)
   };
+}
+
+export function gateCookieOptions() {
+  return {
+    path: "/",
+    httpOnly: true,
+    secure: config.isProduction,
+    sameSite: "lax" as const,
+    maxAge: Math.floor(gateTtlMs / 1000)
+  };
+}
+
+export function createGateToken(username: string): string {
+  const normalized = username.trim().toLowerCase();
+  const expiresAt = Date.now() + gateTtlMs;
+  const signature = signGateValue(normalized, expiresAt);
+  return Buffer.from(JSON.stringify({ username: normalized, expiresAt, signature }), "utf8").toString("base64url");
+}
+
+export function readGateToken(token: string | undefined): { username: string } | null {
+  if (!token) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(token, "base64url").toString("utf8")) as { username?: string; expiresAt?: number; signature?: string };
+    if (!parsed.username || !parsed.expiresAt || !parsed.signature) return null;
+    if (parsed.expiresAt <= Date.now()) return null;
+    const expected = signGateValue(parsed.username, parsed.expiresAt);
+    if (!crypto.timingSafeEqual(Buffer.from(parsed.signature), Buffer.from(expected))) return null;
+    return { username: parsed.username };
+  } catch {
+    return null;
+  }
 }
 
 export async function authHook(request: FastifyRequest): Promise<void> {

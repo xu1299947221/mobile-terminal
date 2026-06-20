@@ -10,6 +10,7 @@ import { api, type AdminContext } from "./api";
 import "./styles.css";
 
 type AuthState = { user: User | null; loading: boolean };
+type GateState = { verified: boolean; username: string | null; loading: boolean };
 type ProjectFormState = {
   name: string;
   slug: string;
@@ -71,13 +72,23 @@ function nextProjectIdentity(projects: ProjectWithPermission[], baseValue: strin
 
 function useAuth() {
   const [state, setState] = useState<AuthState>({ user: null, loading: true });
+  const [gate, setGate] = useState<GateState>({ verified: false, username: null, loading: true });
   useEffect(() => {
     api
       .me()
-      .then(({ user }) => setState({ user, loading: false }))
-      .catch(() => setState({ user: null, loading: false }));
+      .then(({ user }) => {
+        setState({ user, loading: false });
+        setGate({ verified: true, username: user.username, loading: false });
+      })
+      .catch(() => {
+        setState({ user: null, loading: false });
+        api
+          .gateStatus()
+          .then((status) => setGate({ verified: status.verified, username: status.username, loading: false }))
+          .catch(() => setGate({ verified: false, username: null, loading: false }));
+      });
   }, []);
-  return { ...state, setState };
+  return { ...state, gate, setState, setGate };
 }
 
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
@@ -103,8 +114,33 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 }
 
-function Login({ onLogin }: { onLogin: (user: User) => void }) {
-  const [username, setUsername] = useState("admin");
+function AccessGate({ onVerified }: { onVerified: (username: string) => void }) {
+  const [answer, setAnswer] = useState("");
+  const [error, setError] = useState("");
+  return (
+    <div className="login">
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setError("");
+          try {
+            const result = await api.verifyGate(answer);
+            onVerified(result.username);
+          } catch (err: any) {
+            setError(err.message);
+          }
+        }}
+      >
+        <h1>访问验证</h1>
+        <label>你是谁<input value={answer} onChange={(e) => setAnswer(e.target.value)} autoComplete="username" autoFocus /></label>
+        {error && <p className="error">{error}</p>}
+        <button type="submit">继续</button>
+      </form>
+    </div>
+  );
+}
+
+function Login({ username, onLogin }: { username: string; onLogin: (user: User) => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   return (
@@ -122,7 +158,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
         }}
       >
         <h1>mobile-terminal</h1>
-        <label>用户名<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></label>
+        <label>用户名<input value={username} readOnly autoComplete="username" /></label>
         <label>密码<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" /></label>
         {error && <p className="error">{error}</p>}
         <button type="submit">登录</button>
@@ -796,13 +832,19 @@ function AuditPanel({ context }: { context: AdminContext }) {
 function App() {
   const auth = useAuth();
   const navigate = useNavigate();
-  if (auth.loading) return <div className="loading">加载中</div>;
-  if (!auth.user) return <Login onLogin={(user) => { auth.setState({ user, loading: false }); navigate("/projects"); }} />;
+  if (auth.loading || auth.gate.loading) return <div className="loading">加载中</div>;
+  if (!auth.user && !auth.gate.verified) {
+    return <AccessGate onVerified={(username) => auth.setGate({ verified: true, username, loading: false })} />;
+  }
+  if (!auth.user) {
+    return <Login username={auth.gate.username ?? ""} onLogin={(user) => { auth.setState({ user, loading: false }); auth.setGate({ verified: true, username: user.username, loading: false }); navigate("/projects"); }} />;
+  }
   return <Shell user={auth.user} onLogout={async () => {
     try {
       await api.logout();
     } finally {
       auth.setState({ user: null, loading: false });
+      auth.setGate({ verified: false, username: null, loading: false });
       navigate("/projects");
     }
   }} />;
