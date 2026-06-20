@@ -1,13 +1,26 @@
+function ensureHeadTag(html: string, pattern: RegExp, tag: string): string {
+  if (pattern.test(html)) return html;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${tag}`);
+  }
+  return `${tag}\n${html}`;
+}
+
 function injectViewportMeta(html: string): string {
   const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content">';
   const viewportPattern = /<meta\s+[^>]*name=["']viewport["'][^>]*>/i;
+  let next = html;
   if (viewportPattern.test(html)) {
-    return html.replace(viewportPattern, viewport);
+    next = html.replace(viewportPattern, viewport);
+  } else {
+    next = ensureHeadTag(next, viewportPattern, viewport);
   }
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${viewport}`);
-  }
-  return `${viewport}\n${html}`;
+  next = ensureHeadTag(next, /<meta\s+[^>]*name=["']theme-color["'][^>]*>/i, '<meta name="theme-color" content="#111827">');
+  next = ensureHeadTag(next, /<meta\s+[^>]*name=["']apple-mobile-web-app-capable["'][^>]*>/i, '<meta name="apple-mobile-web-app-capable" content="yes">');
+  next = ensureHeadTag(next, /<meta\s+[^>]*name=["']apple-mobile-web-app-status-bar-style["'][^>]*>/i, '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">');
+  next = ensureHeadTag(next, /<meta\s+[^>]*name=["']apple-mobile-web-app-title["'][^>]*>/i, '<meta name="apple-mobile-web-app-title" content="Terminal">');
+  next = ensureHeadTag(next, /<link\s+[^>]*rel=["']manifest["'][^>]*>/i, '<link rel="manifest" href="/manifest.webmanifest">');
+  return next;
 }
 
 function appendBeforeBody(html: string, controls: string): string {

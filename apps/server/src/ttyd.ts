@@ -180,8 +180,10 @@ function proxyTtydHtml(request: FastifyRequest, reply: FastifyReply, target: str
           reply
             .code(res.statusCode ?? 200)
             .header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            .header("Content-Security-Policy", "frame-ancestors 'self'")
             .header("Pragma", "no-cache")
             .header("Expires", "0")
+            .header("X-Frame-Options", "SAMEORIGIN")
             .type("text/html; charset=utf-8")
             .send(injectMobileTtydControls(html, projectId));
           resolve();

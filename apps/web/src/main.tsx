@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Link, Navigate, Route, BrowserRouter as Router, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, Route, BrowserRouter as Router, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { Copy, Download, ExternalLink, LogOut, Maximize2, Minimize2, Play, Plus, RefreshCcw, Save, Send, Smartphone, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Copy, Download, ExternalLink, LogOut, Maximize2, Minimize2, Play, Plus, RefreshCcw, Save, Send, Smartphone, Trash2, Users } from "lucide-react";
 import type { DefaultCommand, ProjectWithPermission, Role, User } from "@mobile-terminal/shared";
 import { api, type AdminContext } from "./api";
 import "./styles.css";
@@ -102,20 +102,25 @@ function useAuth() {
 }
 
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const location = useLocation();
+  const immersive = location.pathname.startsWith("/ttyd-view/");
   return (
-    <div className="app">
-      <header className="topbar">
-        <Link to="/projects" className="brand">mobile-terminal</Link>
-        <nav>
-          <Link to="/projects">项目</Link>
-          {(user.role === "admin" || user.hasProjectAdmin) && <Link to="/admin">管理</Link>}
-          <button onClick={onLogout} title="退出"><LogOut size={18} /></button>
-        </nav>
-      </header>
+    <div className={`app ${immersive ? "immersive" : ""}`}>
+      {!immersive && (
+        <header className="topbar">
+          <Link to="/projects" className="brand">mobile-terminal</Link>
+          <nav>
+            <Link to="/projects">项目</Link>
+            {(user.role === "admin" || user.hasProjectAdmin) && <Link to="/admin">管理</Link>}
+            <button onClick={onLogout} title="退出"><LogOut size={18} /></button>
+          </nav>
+        </header>
+      )}
       <main>
         <Routes>
           <Route path="/projects" element={<Projects user={user} />} />
           <Route path="/app/:slug" element={<TerminalPage />} />
+          <Route path="/ttyd-view/:slug" element={<TtydFramePage />} />
           <Route path="/admin/*" element={user.role === "admin" || user.hasProjectAdmin ? <Admin /> : <Navigate to="/projects" />} />
           <Route path="*" element={<Navigate to="/projects" />} />
         </Routes>
@@ -284,7 +289,7 @@ function Projects({ user }: { user: User }) {
             <div className="actions">
               {project.ttydEnabled && project.permission !== "read" ? (
                 <>
-                  <a className="button" href={`/ttyd/${project.slug}/`} target="_blank"><ExternalLink size={16} />打开</a>
+                  <Link className="button" to={`/ttyd-view/${project.slug}`}><ExternalLink size={16} />打开</Link>
                   <Link className="button ghost" to={`/app/${project.slug}`}>备用</Link>
                 </>
               ) : (
@@ -312,6 +317,19 @@ function StartButtons({ project, onChange }: { project: ProjectWithPermission; o
       <button title="在该项目 tmux 会话里发送 cc 并回车" onClick={() => run(() => api.startCommand(project.id, "claude"))}>Claude</button>
       <button className="ghost" title="停止该项目对应的 tmux session" onClick={() => run(() => api.stopSession(project.id))}>停止</button>
     </>
+  );
+}
+
+function TtydFramePage() {
+  const { slug = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <section className="ttyd-frame-page">
+      <iframe className="ttyd-frame" src={`/ttyd/${encodeURIComponent(slug)}/`} title="ttyd terminal" />
+      <button className="ttyd-back" onClick={() => navigate("/projects")} title="返回项目">
+        <ArrowLeft size={18} />返回
+      </button>
+    </section>
   );
 }
 
@@ -401,7 +419,7 @@ function TerminalView({ project }: { project: ProjectWithPermission }) {
         </div>
         <div className="actions">
           <button className="ghost" onClick={() => setCompact((value) => !value)}>{compact ? <Minimize2 size={16} /> : <Maximize2 size={16} />}{compact ? "标准" : "紧凑"}</button>
-          {project.ttydEnabled && writable && <a className="button ghost" href={`/ttyd/${project.slug}/`} target="_blank">ttyd</a>}
+          {project.ttydEnabled && writable && <Link className="button ghost" to={`/ttyd-view/${project.slug}`}>ttyd</Link>}
         </div>
       </div>
       <div className="terminal" ref={terminalRef} />
