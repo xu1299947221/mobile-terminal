@@ -35,7 +35,36 @@ import { commandExists } from "./process.js";
 import { sendTerminalInput } from "./terminal-input.js";
 import { checkLoginRateLimit, isAllowedOrigin, recordLoginFailure, recordLoginSuccess } from "./security.js";
 
-function handleError(error: any, reply: FastifyReply): void {
+function isZodError(error: unknown): error is { issues: Array<{ path?: Array<string | number>; code?: string }> } {
+  return Boolean(error && typeof error === "object" && (error as any).name === "ZodError" && Array.isArray((error as any).issues));
+}
+
+export function handleError(error: any, reply: FastifyReply): void {
+  if (isZodError(error)) {
+    const first = error.issues[0];
+    const field = first?.path?.join(".") || "请求参数";
+    const fieldNames: Record<string, string> = {
+      username: "用户名",
+      password: "密码",
+      answer: "验证答案",
+      displayName: "显示名",
+      role: "角色",
+      name: "项目名称",
+      slug: "访问标识",
+      path: "项目目录",
+      defaultCommand: "默认命令",
+      tmuxSession: "tmux 会话"
+    };
+    const label = fieldNames[field] ?? field;
+    const message =
+      first?.code === "too_small"
+        ? `${label}不能为空或长度不足`
+        : first?.code === "invalid_format"
+          ? `${label}格式不正确`
+          : `${label}不符合要求`;
+    reply.code(400).send({ error: "bad_request", message });
+    return;
+  }
   if (error?.code === "SQLITE_CONSTRAINT_UNIQUE" || error?.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
     const message = String(error?.message ?? "");
     if (message.includes("projects.slug")) {

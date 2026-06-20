@@ -132,7 +132,7 @@ function AccessGate({ onVerified }: { onVerified: (username: string) => void }) 
         }}
       >
         <h1>访问验证</h1>
-        <label>你是谁<input value={answer} onChange={(e) => setAnswer(e.target.value)} autoComplete="username" autoFocus /></label>
+        <label>你是谁<input value={answer} onChange={(e) => setAnswer(e.target.value)} autoComplete="username" autoFocus required /></label>
         {error && <p className="error">{error}</p>}
         <button type="submit">继续</button>
       </form>
@@ -149,6 +149,10 @@ function Login({ username, onLogin }: { username: string; onLogin: (user: User) 
         onSubmit={async (event) => {
           event.preventDefault();
           setError("");
+          if (!password) {
+            setError("请输入密码");
+            return;
+          }
           try {
             const { user } = await api.login(username, password);
             onLogin(user);
@@ -159,7 +163,7 @@ function Login({ username, onLogin }: { username: string; onLogin: (user: User) 
       >
         <h1>mobile-terminal</h1>
         <label>用户名<input value={username} readOnly autoComplete="username" /></label>
-        <label>密码<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" /></label>
+        <label>密码<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" required /></label>
         {error && <p className="error">{error}</p>}
         <button type="submit">登录</button>
       </form>
@@ -730,13 +734,13 @@ function UserAdmin() {
       <h2><Users size={18} />用户</h2>
       <div className="form-grid">
         <label>用户名
-          <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" />
+          <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" required />
         </label>
         <label>显示名
-          <input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="显示给人的名字" />
+          <input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="显示给人的名字" required />
         </label>
         <label>密码
-          <input value={form.password} type="password" onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="至少 6 位" />
+          <input value={form.password} type="password" onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="至少 6 位" minLength={6} required />
         </label>
         <label>角色
           <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>

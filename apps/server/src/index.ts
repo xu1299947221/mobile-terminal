@@ -8,7 +8,7 @@ import fastifyStatic from "@fastify/static";
 import { config, validateConfig, webDistDir } from "./config.js";
 import { migrate } from "./db.js";
 import { registerAuth } from "./auth.js";
-import { registerRoutes } from "./routes.js";
+import { handleError, registerRoutes } from "./routes.js";
 import { registerSecurity } from "./security.js";
 import { registerTerminalWs } from "./terminal-ws.js";
 
@@ -22,6 +22,9 @@ async function main() {
   });
 
   app.decorate("configCookieName", config.cookieName);
+  app.setErrorHandler((error, _request, reply) => {
+    handleError(error, reply);
+  });
   await app.register(cookie, {
     secret: config.cookieSecret
   });
