@@ -23,6 +23,59 @@
 - 数据库：`data/app.db`
 - 进程管理：`systemd --user`
 
+## 部署环境要求
+
+推荐并支持的部署环境是 Linux。原生 Windows 不作为支持目标，因为本项目依赖 `tmux`、PTY、systemd 用户服务和 Linux 终端生态。
+
+Windows 可以通过 WSL2 部署：
+
+- 在 Windows 上安装 WSL2。
+- 在 WSL2 里安装 Ubuntu/Debian 等 Linux 发行版。
+- 后续所有命令都在 WSL2 Linux 环境内执行。
+- Cloudflare Tunnel 也运行在 WSL2 里。
+
+必备环境：
+
+- Linux 服务器或 WSL2 Linux 环境。
+- Node.js 20 或更新版本。
+- npm。
+- tmux。
+- ttyd。
+- SQLite 支持，项目通过 `better-sqlite3` 内嵌使用。
+- Cloudflare Tunnel 客户端 `cloudflared`，用于公网访问。
+- systemd 用户服务，推荐用于长期运行；没有 systemd 时也可以用 `npm run start -w @mobile-terminal/server` 手动启动。
+
+按需环境：
+
+- Codex CLI：如果要在项目 session 里启动 `codex`。
+- Claude Code CLI 或自定义 `cc` 命令：如果要在项目 session 里启动 Claude。
+- Git 和 SSH key：如果需要拉取或推送代码仓库。
+
+运行环境需要确保这些命令在服务进程的 `PATH` 中可用：
+
+```bash
+node --version
+npm --version
+tmux -V
+ttyd --version
+cloudflared --version
+```
+
+可以用内置检查命令查看当前环境：
+
+```bash
+npm run doctor -w @mobile-terminal/server
+```
+
+生产环境必须配置：
+
+```env
+MOBILE_TERMINAL_COOKIE_SECRET=至少 32 个字符的随机密钥
+MOBILE_TERMINAL_PUBLIC_ORIGIN=https://terminal.example.com
+```
+
+不要把真实域名、隧道令牌、数据库、日志或 `.env` 文件提交进仓库。
+
 ## 技术栈
 
 - 前端：React + Vite + TypeScript
