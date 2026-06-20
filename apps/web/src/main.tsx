@@ -362,17 +362,12 @@ function TtydFramePage() {
     window.visualViewport?.addEventListener("scroll", syncVisibleArea);
     virtualKeyboard?.addEventListener("geometrychange", syncVisibleArea);
     const timers = [80, 260, 600, 1000].map((delay) => window.setTimeout(syncVisibleArea, delay));
-    const preventPageScroll = (event: TouchEvent) => {
-      event.preventDefault();
-    };
-    document.addEventListener("touchmove", preventPageScroll, { capture: true, passive: false });
     return () => {
       window.removeEventListener("resize", syncVisibleArea);
       window.removeEventListener("orientationchange", syncVisibleArea);
       window.visualViewport?.removeEventListener("resize", syncVisibleArea);
       window.visualViewport?.removeEventListener("scroll", syncVisibleArea);
       virtualKeyboard?.removeEventListener("geometrychange", syncVisibleArea);
-      document.removeEventListener("touchmove", preventPageScroll, { capture: true });
       timers.forEach(window.clearTimeout);
     };
   }, []);

@@ -18,7 +18,7 @@ body {
   min-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 button,
@@ -236,7 +236,7 @@ textarea {
   background: #0b1020;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 .ttyd-frame {
