@@ -42,12 +42,15 @@ function mobileControls(projectId: string): string {
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
   }
   body { padding-bottom: 0 !important; }
   .xterm-viewport {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    overscroll-behavior: contain;
+    touch-action: none;
   }
   body.mt-keyboard-fit #terminal-container,
   body.mt-ios-keyboard-fit #terminal-container {
@@ -649,23 +652,29 @@ function mobileControls(projectId: string): string {
       showStatus((lines > 0 ? "历史↑ " : "历史↓ ") + Math.abs(lines) + "行");
       return true;
     }
+    function shouldOwnTouch(event) {
+      return !(event.target && controller.contains(event.target));
+    }
     document.addEventListener("touchstart", function (event) {
-      if (!gestureScrollEnabled) return;
-      if (event.target && controller.contains(event.target)) return;
+      if (!shouldOwnTouch(event)) return;
       if (!event.touches || !event.touches.length) return;
       lastY = event.touches[0].clientY;
       pendingPixels = 0;
     }, { capture: true, passive: true });
     document.addEventListener("touchmove", function (event) {
-      if (!gestureScrollEnabled) return;
-      if (event.target && controller.contains(event.target)) return;
+      if (!shouldOwnTouch(event)) return;
+      event.preventDefault();
       if (lastY === null || !event.touches || !event.touches.length) return;
+      if (!gestureScrollEnabled) return;
       var nextY = event.touches[0].clientY;
-      if (scrollTerminal(lastY - nextY)) event.preventDefault();
+      scrollTerminal(lastY - nextY);
       lastY = nextY;
     }, { capture: true, passive: false });
     document.addEventListener("touchend", function () {
-      if (!gestureScrollEnabled) return;
+      lastY = null;
+      pendingPixels = 0;
+    }, { capture: true, passive: true });
+    document.addEventListener("touchcancel", function () {
       lastY = null;
       pendingPixels = 0;
     }, { capture: true, passive: true });
