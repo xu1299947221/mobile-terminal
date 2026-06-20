@@ -27,6 +27,8 @@
 
 推荐并支持的部署环境是 Linux。原生 Windows 不作为支持目标，因为本项目依赖 `tmux`、PTY、systemd 用户服务和 Linux 终端生态。
 
+Docker 部署也是支持方式，适合 Linux、Windows Docker Desktop 和 macOS Docker Desktop。Windows 上的 Docker Desktop 通常通过 WSL2/Linux VM 运行 Linux 容器，因此比 Windows 原生部署更可靠。
+
 Windows 可以通过 WSL2 部署：
 
 - 在 Windows 上安装 WSL2。
@@ -44,6 +46,12 @@ Windows 可以通过 WSL2 部署：
 - SQLite 支持，项目通过 `better-sqlite3` 内嵌使用。
 - Cloudflare Tunnel 客户端 `cloudflared`，用于公网访问。
 - systemd 用户服务，推荐用于长期运行；没有 systemd 时也可以用 `npm run start -w @mobile-terminal/server` 手动启动。
+
+Docker 部署必备：
+
+- Docker Engine 或 Docker Desktop。
+- Docker Compose v2。
+- Cloudflare Tunnel token。
 
 按需环境：
 
@@ -153,9 +161,16 @@ systemctl --user restart mobile-terminal
 journalctl --user -u mobile-terminal --no-pager -n 120
 ```
 
+Docker 一键启动：
+
+```bash
+bash scripts/docker-up.sh
+```
+
 ## 文档
 
 - [部署说明](docs/setup.md)
+- [Docker 部署](docs/docker.md)
 - [安全设计](docs/security.md)
 - [规格文档](/home/data/connect/mobile-terminal-spec.md)
 

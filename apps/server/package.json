@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "init-admin": "tsx src/cli.ts init-admin",
+    "init-project": "tsx src/cli.ts init-project",
     "doctor": "tsx src/cli.ts doctor"
   },
   "keywords": [],

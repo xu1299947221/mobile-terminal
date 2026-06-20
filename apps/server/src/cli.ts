@@ -1,8 +1,10 @@
-import { CreateUserRequestSchema } from "@mobile-terminal/shared";
+import path from "node:path";
+import { CreateProjectRequestSchema, CreateUserRequestSchema } from "@mobile-terminal/shared";
 import { audit, db, id, migrate, nowIso } from "./db.js";
 import { hashPassword, publicUser } from "./auth.js";
 import { commandExists } from "./process.js";
 import { config } from "./config.js";
+import { validateDirectory } from "./projects.js";
 
 async function initAdmin(args: string[]) {
   const username = args[0] ?? process.env.MT_ADMIN_USER;
@@ -60,6 +62,42 @@ async function doctor() {
   );
 }
 
+async function initProject(args: string[]) {
+  const name = args[0] ?? process.env.MT_PROJECT_NAME ?? "workspace";
+  const slug = args[1] ?? process.env.MT_PROJECT_SLUG ?? "workspace";
+  const projectPath = path.resolve(args[2] ?? process.env.MT_PROJECT_PATH ?? "/workspace");
+  const tmuxSession = args[3] ?? process.env.MT_PROJECT_TMUX_SESSION ?? `mt_${slug.replace(/[^a-zA-Z0-9_.:-]+/g, "_")}`;
+  const defaultCommand = args[4] ?? process.env.MT_PROJECT_DEFAULT_COMMAND ?? "shell";
+  const body = CreateProjectRequestSchema.parse({
+    name,
+    slug,
+    path: projectPath,
+    tmuxSession,
+    defaultCommand,
+    ttydEnabled: true
+  });
+  await validateDirectory(path.resolve(body.path));
+  const now = nowIso();
+  const existing = db.prepare("SELECT * FROM projects WHERE slug = ?").get(body.slug) as any;
+  if (existing) {
+    db.prepare(`
+      UPDATE projects
+      SET name = ?, path = ?, default_command = ?, tmux_session = ?, ttyd_enabled = 1, updated_at = ?
+      WHERE id = ?
+    `).run(body.name, path.resolve(body.path), body.defaultCommand, body.tmuxSession, now, existing.id);
+    audit({ action: "project_reset_by_cli", projectId: existing.id, details: { slug: body.slug } });
+    console.log(JSON.stringify({ projectId: existing.id, updated: true }, null, 2));
+    return;
+  }
+  const projectId = id("prj");
+  db.prepare(`
+    INSERT INTO projects (id, name, slug, path, default_command, tmux_session, ttyd_enabled, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 1, 'idle', ?, ?)
+  `).run(projectId, body.name, body.slug, path.resolve(body.path), body.defaultCommand, body.tmuxSession, now, now);
+  audit({ action: "project_created_by_cli", projectId, details: { slug: body.slug } });
+  console.log(JSON.stringify({ projectId, created: true }, null, 2));
+}
+
 async function main() {
   migrate();
   const [command, ...args] = process.argv.slice(2);
@@ -71,6 +109,10 @@ async function main() {
     await doctor();
     return;
   }
+  if (command === "init-project") {
+    await initProject(args);
+    return;
+  }
   throw new Error(`未知命令: ${command ?? ""}`);
 }
 
@@ -78,4 +120,3 @@ main().catch((error) => {
   console.error(error.message);
   process.exit(1);
 });
-

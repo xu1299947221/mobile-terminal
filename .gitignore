@@ -10,3 +10,4 @@ data/*.db-wal
 *.log
 .env
 .env.*
+!.env.example

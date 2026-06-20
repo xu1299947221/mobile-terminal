@@ -12,6 +12,7 @@
     "dev": "concurrently \"npm run dev -w @mobile-terminal/server\" \"npm run dev -w @mobile-terminal/web\"",
     "doctor": "npm run doctor -w @mobile-terminal/server",
     "init-admin": "npm run init-admin -w @mobile-terminal/server",
+    "init-project": "npm run init-project -w @mobile-terminal/server",
     "proxy": "node scripts/local-proxy.mjs",
     "verify:http": "node scripts/verify-http.mjs"
   },

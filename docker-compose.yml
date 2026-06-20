@@ -1,0 +1,30 @@
+services:
+  mobile-terminal:
+    build: .
+    image: mobile-terminal:latest
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "127.0.0.1:3020:3020"
+    volumes:
+      - mobile-terminal-data:/data
+      - ./workspace:/workspace
+      - mobile-terminal-home:/root
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles:
+      - tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN:-}
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - mobile-terminal
+
+volumes:
+  mobile-terminal-data:
+  mobile-terminal-home:
