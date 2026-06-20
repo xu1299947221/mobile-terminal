@@ -260,6 +260,8 @@ function mobileControls(projectId: string): string {
   var ignoreNextInput = false;
   var sentinel = "\\u200b";
   var statusTimer = null;
+  var lastLayoutWidth = window.innerWidth;
+  var lastLayoutHeight = window.innerHeight;
   var specialKeys = {
     Enter: "Enter",
     Tab: "Tab",
@@ -398,7 +400,7 @@ function mobileControls(projectId: string): string {
     historyButton.classList.toggle("mt-btn-active", isHistory);
     controller.classList.remove("mt-collapsed");
     collapseButton.textContent = "收起";
-    requestAnimationFrame(clampCurrentPosition);
+    clampCurrentPosition();
   }
 
   function keyboardVisible() {
@@ -429,7 +431,6 @@ function mobileControls(projectId: string): string {
   function syncKeyboardLayout() {
     if (document.activeElement === input && !keyboardVisible()) {
       if (keyboardState !== "keyboard-opening") setKeyboardState("keyboard-opening");
-      clampCurrentPosition();
       return;
     }
     if (keyboardVisible()) {
@@ -439,7 +440,6 @@ function mobileControls(projectId: string): string {
     }
     if (keyboardState !== "idle") {
       setKeyboardState("idle");
-      clampCurrentPosition();
     }
   }
 
@@ -738,6 +738,11 @@ function mobileControls(projectId: string): string {
   });
 
   window.addEventListener("resize", function () {
+    var nextWidth = window.innerWidth;
+    var nextHeight = window.innerHeight;
+    if (nextWidth === lastLayoutWidth && nextHeight === lastLayoutHeight) return;
+    lastLayoutWidth = nextWidth;
+    lastLayoutHeight = nextHeight;
     setTimeout(clampCurrentPosition, 80);
   });
   window.addEventListener("orientationchange", function () {
@@ -745,7 +750,6 @@ function mobileControls(projectId: string): string {
   });
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", syncKeyboardLayout);
-    window.visualViewport.addEventListener("scroll", syncKeyboardLayout);
   }
 
   tryEnableVirtualKeyboard();
