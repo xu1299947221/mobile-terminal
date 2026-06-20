@@ -4,7 +4,7 @@
   "short_name": "Terminal",
   "start_url": "/projects",
   "scope": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#0f172a",
