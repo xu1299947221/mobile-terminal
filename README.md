@@ -20,6 +20,12 @@
 
 ![mobile-terminal 项目页](docs/assets/mobile-projects.png)
 
+打开项目后可以在同一个 `tmux` 会话中查看 Codex 或 Claude Code 的执行过程，并继续发送下一步任务。
+
+![Codex 终端界面](docs/assets/mobile-terminal-codex.png)
+
+![Claude Code 终端界面](docs/assets/mobile-terminal-claude.png)
+
 ## 当前部署信息
 
 - 项目目录：`/home/data/connect/mobile-terminal`
