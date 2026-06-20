@@ -2,7 +2,8 @@
   "name": "mobile-terminal",
   "short_name": "Terminal",
   "start_url": "/projects",
-  "display": "standalone",
+  "display": "fullscreen",
+  "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#111827",
   "icons": []
