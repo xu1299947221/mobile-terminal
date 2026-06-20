@@ -506,6 +506,8 @@ function mobileControls(projectId: string): string {
       setKeyboardState("keyboard-opening");
       setTimeout(syncKeyboardLayout, 80);
       setTimeout(syncKeyboardLayout, 320);
+      setTimeout(syncKeyboardLayout, 700);
+      setTimeout(syncKeyboardLayout, 1100);
       return;
     }
     if (document.activeElement !== input && keyboardState !== "idle") {
@@ -813,7 +815,10 @@ function mobileControls(projectId: string): string {
     setTimeout(clampCurrentPosition, 250);
   });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener("resize", syncKeyboardLayout);
+    window.visualViewport.addEventListener("resize", function () {
+      syncKeyboardLayout();
+      if (keyboardVisible()) placeForKeyboard();
+    });
   }
 
   tryEnableVirtualKeyboard();
