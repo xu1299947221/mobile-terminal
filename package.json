@@ -1,0 +1,35 @@
+{
+  "name": "mobile-terminal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run build --workspaces",
+    "dev": "concurrently \"npm run dev -w @mobile-terminal/server\" \"npm run dev -w @mobile-terminal/web\"",
+    "doctor": "npm run doctor -w @mobile-terminal/server",
+    "init-admin": "npm run init-admin -w @mobile-terminal/server",
+    "proxy": "node scripts/local-proxy.mjs",
+    "verify:http": "node scripts/verify-http.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "ws": "^8.21.0"
+  }
+}

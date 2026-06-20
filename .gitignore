@@ -1,0 +1,12 @@
+node_modules/
+dist/
+apps/*/dist/
+packages/*/dist/
+
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+*.log
+.env
+.env.*

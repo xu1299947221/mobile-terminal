@@ -1,0 +1,11 @@
+[
+  {
+    "name": "connect",
+    "slug": "connect",
+    "path": "/home/data/connect",
+    "defaultCommand": "shell",
+    "tmuxSession": "mt_connect",
+    "ttydEnabled": true
+  }
+]
+

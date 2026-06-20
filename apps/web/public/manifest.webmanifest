@@ -1,0 +1,9 @@
+{
+  "name": "mobile-terminal",
+  "short_name": "Terminal",
+  "start_url": "/projects",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#111827",
+  "icons": []
+}
