@@ -155,6 +155,8 @@ function PwaControls() {
   const [fullscreen, setFullscreen] = useState(false);
   const standalone = usePwaDisplayMode();
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const isQqBrowser = /mqqbrowser|qqbrowser/i.test(navigator.userAgent);
   const canFullscreen = Boolean(document.documentElement.requestFullscreen);
   useEffect(() => {
     const onBeforeInstallPrompt = (event: BeforeInstallPromptEvent) => {
@@ -191,13 +193,21 @@ function PwaControls() {
         // Continue to platform-specific guidance below.
       }
     }
-    setMessage(isIos ? "iOS 请点分享，再添加到主屏幕" : "浏览器菜单里选择安装应用或添加到主屏幕");
+    if (isIos) {
+      setMessage("iOS: 用 Safari 打开，点底部分享按钮，选择添加到主屏幕，再从桌面图标进入。");
+      return;
+    }
+    if (isAndroid && isQqBrowser) {
+      setMessage("QQ 浏览器通常没有标准 PWA 安装入口；可以继续用当前全屏，或用 Chrome/Edge 打开后菜单里安装应用。");
+      return;
+    }
+    setMessage("安卓 Chrome/Edge: 点右上角菜单，选择安装应用或添加到主屏幕。当前浏览器不一定支持。");
   };
   return (
     <div className="pwa-strip">
       <div>
         <strong>{standalone ? "已用应用模式打开" : "手机全屏模式"}</strong>
-        <span>{standalone ? "当前已隐藏浏览器工具栏" : isIos ? "iOS 从主屏幕打开效果最好" : "安卓可安装到桌面或进入全屏"}</span>
+        <span>{standalone ? "当前已隐藏浏览器工具栏" : isIos ? "iOS 需要 Safari 添加到主屏幕" : isQqBrowser ? "QQ 浏览器可用全屏，但不一定支持安装应用" : "安卓 Chrome/Edge 可安装到桌面或进入全屏"}</span>
       </div>
       <button className="ghost" onClick={launch}><Smartphone size={16} />{standalone || fullscreen ? "全屏中" : "安装/全屏"}</button>
       {message && <p>{message}</p>}
@@ -323,8 +333,31 @@ function StartButtons({ project, onChange }: { project: ProjectWithPermission; o
 function TtydFramePage() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
+  const pageRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const syncVisibleArea = () => {
+      const viewport = window.visualViewport;
+      const visibleHeight = viewport ? Math.max(220, Math.min(window.innerHeight, viewport.height + viewport.offsetTop)) : window.innerHeight;
+      const top = viewport ? viewport.offsetTop : 0;
+      pageRef.current?.style.setProperty("--app-visible-height", `${visibleHeight}px`);
+      pageRef.current?.style.setProperty("--app-visible-top", `${top}px`);
+    };
+    syncVisibleArea();
+    window.addEventListener("resize", syncVisibleArea);
+    window.addEventListener("orientationchange", syncVisibleArea);
+    window.visualViewport?.addEventListener("resize", syncVisibleArea);
+    window.visualViewport?.addEventListener("scroll", syncVisibleArea);
+    const timers = [80, 260, 600, 1000].map((delay) => window.setTimeout(syncVisibleArea, delay));
+    return () => {
+      window.removeEventListener("resize", syncVisibleArea);
+      window.removeEventListener("orientationchange", syncVisibleArea);
+      window.visualViewport?.removeEventListener("resize", syncVisibleArea);
+      window.visualViewport?.removeEventListener("scroll", syncVisibleArea);
+      timers.forEach(window.clearTimeout);
+    };
+  }, []);
   return (
-    <section className="ttyd-frame-page">
+    <section className="ttyd-frame-page" ref={pageRef}>
       <iframe className="ttyd-frame" src={`/ttyd/${encodeURIComponent(slug)}/`} title="ttyd terminal" />
       <button className="ttyd-back" onClick={() => navigate("/projects")} title="返回项目">
         <ArrowLeft size={18} />返回
