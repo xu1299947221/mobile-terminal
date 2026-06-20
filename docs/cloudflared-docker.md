@@ -2,6 +2,52 @@
 
 本文只说明 `cloudflared` 容器如何作为独立公网转发服务使用，不依赖 `mobile-terminal`。
 
+## Tunnel 原理
+
+Cloudflare Tunnel 的关键点是：
+
+```text
+不是公网用户主动连进你的内网，
+而是内网机器主动连出去到 Cloudflare。
+```
+
+内网机器虽然没有公网 IP，但通常可以访问互联网。`cloudflared` 利用这个能力，主动向 Cloudflare 建立一条长期连接。
+
+```text
+内网机器 / Docker 宿主机
+  cloudflared
+      │
+      │ 主动建立长连接
+      ▼
+  Cloudflare
+```
+
+手机或浏览器访问你的公网域名时，实际先访问的是 Cloudflare：
+
+```text
+浏览器
+  │
+  │ https://app.example.com
+  ▼
+Cloudflare
+```
+
+Cloudflare 再通过 `cloudflared` 已经建立好的连接，把请求转回内网服务：
+
+```text
+Cloudflare
+  │
+  │ 复用 cloudflared 的长连接
+  ▼
+cloudflared 容器
+  │
+  │ HTTP 转发
+  ▼
+你的本地服务
+```
+
+所以它不需要服务器开放入站端口，也不要求服务器有公网 IP。
+
 ## 它解决什么问题
 
 没有公网 IP、不能做端口映射时，内网机器仍然可以通过 Cloudflare Tunnel 暴露一个 HTTPS 域名。
@@ -16,6 +62,175 @@
 ```
 
 `cloudflared` 容器只负责转发，不负责登录鉴权、不负责业务逻辑。你的业务服务仍然需要自己做好认证和权限控制。
+
+## 架构图
+
+### 单独转发宿主机服务
+
+```text
+┌────────────┐
+│  浏览器/手机 │
+└─────┬──────┘
+      │ 1. 访问 https://app.example.com
+      ▼
+┌────────────────────┐
+│ Cloudflare 边缘节点 │
+│ DNS / HTTPS / WAF  │
+└─────┬──────────────┘
+      │ 2. 找到对应 Tunnel
+      ▼
+┌────────────────────┐
+│ cloudflared 容器    │
+│ 主动连 Cloudflare   │
+└─────┬──────────────┘
+      │ 3. 转发到宿主机服务
+      ▼
+┌────────────────────┐
+│ 宿主机本地服务      │
+│ 127.0.0.1:3000     │
+└────────────────────┘
+```
+
+Docker Desktop 场景中，`cloudflared` 容器访问宿主机通常使用：
+
+```text
+http://host.docker.internal:3000
+```
+
+### 转发同一个 compose 里的服务
+
+```text
+┌────────────┐
+│  浏览器/手机 │
+└─────┬──────┘
+      ▼
+┌────────────────────┐
+│ Cloudflare          │
+└─────┬──────────────┘
+      ▼
+┌────────────────────┐
+│ cloudflared 容器    │
+└─────┬──────────────┘
+      │ Docker 内部网络
+      ▼
+┌────────────────────┐
+│ app 容器            │
+│ http://app:3000     │
+└────────────────────┘
+```
+
+同一个 `docker-compose.yml` 里的服务可以直接使用服务名访问，例如：
+
+```text
+http://app:3000
+```
+
+### 转发局域网其他机器
+
+```text
+┌────────────┐
+│  浏览器/手机 │
+└─────┬──────┘
+      ▼
+┌────────────────────┐
+│ Cloudflare          │
+└─────┬──────────────┘
+      ▼
+┌────────────────────┐
+│ cloudflared 容器    │
+└─────┬──────────────┘
+      │ 局域网访问
+      ▼
+┌────────────────────┐
+│ 192.168.1.50:8080  │
+└────────────────────┘
+```
+
+前提是运行 `cloudflared` 的机器能访问这个局域网 IP 和端口。
+
+## 数据流转
+
+### HTTP 页面请求
+
+```text
+1. 浏览器访问：
+   https://app.example.com
+
+2. DNS 指向 Cloudflare。
+
+3. Cloudflare 判断这个域名属于某个 Tunnel。
+
+4. Cloudflare 通过已连接的 cloudflared，把 HTTP 请求交给内网机器。
+
+5. cloudflared 根据 Cloudflare 后台 Public Hostnames 的配置，把请求转发到本地目标服务。
+
+6. 本地服务返回 HTML / JSON / 文件。
+
+7. 响应按原路返回浏览器。
+```
+
+图示：
+
+```text
+浏览器
+  │ HTTPS 请求
+  ▼
+Cloudflare
+  │ Tunnel 长连接
+  ▼
+cloudflared 容器
+  │ HTTP 转发
+  ▼
+本地服务
+  │ HTTP 响应
+  ▼
+cloudflared
+  ▼
+Cloudflare
+  ▼
+浏览器
+```
+
+### WebSocket 请求
+
+WebSocket 也是同一条公网入口，只是协议从普通 HTTP 升级为长连接。
+
+```text
+浏览器 WebSocket
+  -> Cloudflare
+  -> cloudflared
+  -> 本地 WebSocket 服务
+```
+
+如果本地服务支持 WebSocket，Cloudflare Tunnel 可以转发。`mobile-terminal` 的终端实时输出就是通过 WebSocket/代理链路返回手机。
+
+## cloudflared 和 Public Hostnames 的分工
+
+`cloudflared` 容器只需要知道“我属于哪个 Tunnel”。这个身份由 token 决定：
+
+```text
+CLOUDFLARED_TOKEN=...
+```
+
+具体哪个域名转发到哪个内网地址，在 Cloudflare 后台配置：
+
+```text
+Public Hostname:
+app.example.com -> http://host.docker.internal:3000
+```
+
+可以理解成：
+
+```text
+cloudflared 容器：
+  我是谁？由 token 决定。
+
+Cloudflare 后台：
+  哪些域名进入这个 Tunnel？
+  每个域名转发到哪里？
+```
+
+当前文档使用的是 Cloudflare 后台托管配置方式。还有另一种本地 `config.yml` 方式，可以把 ingress 规则写在本地文件里，但本项目默认不使用。
 
 ## 交互式启动脚本
 
