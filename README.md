@@ -198,6 +198,7 @@ bash scripts/docker-up.sh
 - [部署说明](docs/setup.md)
 - [Docker 部署](docs/docker.md)
 - [Cloudflare Tunnel Docker 独立使用说明](docs/cloudflared-docker.md)
+- [ttyd 手机端输入体验优化方案](docs/ttyd-mobile-input-plan.md)
 - [安全设计](docs/security.md)
 - [规格文档](/home/data/connect/mobile-terminal-spec.md)
 
