@@ -249,10 +249,32 @@ export async function proxyTtydWebSocket(
   });
   const pending: Array<{ data: WebSocket.RawData; binary: boolean }> = [];
   let closed = false;
+  let clientAlive = true;
+  let upstreamAlive = true;
+  const heartbeat = setInterval(() => {
+    if (closed) return;
+    if (client.readyState === WebSocket.OPEN) {
+      if (!clientAlive) {
+        closeBoth(1011, "client heartbeat timeout");
+        return;
+      }
+      clientAlive = false;
+      client.ping();
+    }
+    if (upstream.readyState === WebSocket.OPEN) {
+      if (!upstreamAlive) {
+        closeBoth(1011, "upstream heartbeat timeout");
+        return;
+      }
+      upstreamAlive = false;
+      upstream.ping();
+    }
+  }, 25000);
 
   const closeBoth = (code = 1000, reason = "") => {
     if (closed) return;
     closed = true;
+    clearInterval(heartbeat);
     const closeCode = normalizeCloseCode(code);
     const closeReason = reason.slice(0, 120);
     if (client.readyState === WebSocket.OPEN || client.readyState === WebSocket.CONNECTING) {
@@ -263,7 +285,15 @@ export async function proxyTtydWebSocket(
     }
   };
 
+  client.on("pong", () => {
+    clientAlive = true;
+  });
+  upstream.on("pong", () => {
+    upstreamAlive = true;
+  });
+
   client.on("message", (data, isBinary) => {
+    clientAlive = true;
     if (upstream.readyState === WebSocket.OPEN) {
       upstream.send(data, { binary: isBinary });
     } else if (upstream.readyState === WebSocket.CONNECTING) {
@@ -278,6 +308,7 @@ export async function proxyTtydWebSocket(
   });
 
   upstream.on("message", (data, isBinary) => {
+    upstreamAlive = true;
     if (client.readyState === WebSocket.OPEN) {
       client.send(data, { binary: isBinary });
     }
