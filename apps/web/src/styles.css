@@ -162,6 +162,61 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.latency-panel {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 10px;
+  background: white;
+  border: 1px solid #d9dee7;
+  border-radius: 8px;
+}
+
+.latency-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.latency-head span,
+.latency-summary {
+  display: block;
+  margin-top: 3px;
+  color: #5b6472;
+  font-size: 13px;
+}
+
+.latency-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.latency-table {
+  display: grid;
+  grid-template-columns: 44px repeat(3, minmax(70px, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #e4e7ec;
+  font-size: 13px;
+}
+
+.latency-table span {
+  min-height: 30px;
+  padding: 6px 8px;
+  background: #fff;
+  color: #172033;
+}
+
+.latency-table span:nth-child(-n + 4) {
+  background: #f2f4f7;
+  color: #5b6472;
+  font-weight: 600;
+}
+
 .login {
   min-height: 100vh;
   display: grid;

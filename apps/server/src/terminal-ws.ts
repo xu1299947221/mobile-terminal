@@ -10,6 +10,29 @@ import { sendTerminalInput } from "./terminal-input.js";
 import { isAllowedOrigin } from "./security.js";
 
 export async function registerTerminalWs(app: FastifyInstance): Promise<void> {
+  app.get("/ws/ping", { websocket: true }, (socket, request) => {
+    void (async () => {
+      if (!isAllowedOrigin(request.headers.origin)) {
+        socket.close(1008, "origin not allowed");
+        return;
+      }
+      await authHook(request);
+      if (!request.user) {
+        socket.close(1008, "unauthorized");
+        return;
+      }
+      socket.on("message", (raw: Buffer) => {
+        if (socket.readyState === socket.OPEN) {
+          socket.send(raw);
+        }
+      });
+    })().catch((error: any) => {
+      if (socket.readyState === socket.OPEN) {
+        socket.close(1011, error?.message ?? "ping websocket failed");
+      }
+    });
+  });
+
   app.get("/ws/terminal/:slug", { websocket: true }, (socket, request) => {
     let term: pty.IPty | null = null;
     const setupPromise = setupTerminalConnection();

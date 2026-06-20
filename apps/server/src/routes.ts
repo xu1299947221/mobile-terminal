@@ -96,6 +96,11 @@ function requireProjectAdminAccess(request: FastifyRequest, reply: FastifyReply,
 }
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/api/ping", async (request, reply) => {
+    if (!requireAuth(request, reply)) return;
+    return { ok: true, now: new Date().toISOString() };
+  });
+
   app.get("/api/health", async (request, reply) => {
     if (!requireAdmin(request, reply)) return;
     return { ok: true };

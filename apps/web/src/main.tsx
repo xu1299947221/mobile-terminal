@@ -33,6 +33,12 @@ type VirtualKeyboardLike = EventTarget & {
   overlaysContent: boolean;
   boundingRect: DOMRectReadOnly;
 };
+type LatencySample = {
+  id: number;
+  httpMs: number | null;
+  wsConnectMs: number | null;
+  wsRoundTripMs: number | null;
+};
 
 declare global {
   interface WindowEventMap {
@@ -153,6 +159,21 @@ function usePwaDisplayMode() {
   return standalone;
 }
 
+function useAndroidOrientationLock() {
+  useEffect(() => {
+    if (!/android/i.test(navigator.userAgent)) return;
+    const orientation = window.innerWidth >= window.innerHeight ? "landscape" : "portrait";
+    screen.orientation?.lock(orientation).catch(() => undefined);
+    return () => {
+      try {
+        screen.orientation?.unlock();
+      } catch {
+        // Some Android browsers expose orientation without allowing unlock.
+      }
+    };
+  }, []);
+}
+
 function PwaControls() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [message, setMessage] = useState("");
@@ -216,6 +237,119 @@ function PwaControls() {
       <button className="ghost" onClick={launch}><Smartphone size={16} />{standalone || fullscreen ? "全屏中" : "安装/全屏"}</button>
       {message && <p>{message}</p>}
     </div>
+  );
+}
+
+function formatLatency(value: number | null): string {
+  return value === null ? "-" : `${Math.round(value)} ms`;
+}
+
+function latencyStats(values: Array<number | null>): string {
+  const valid = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (valid.length === 0) return "-";
+  const best = Math.min(...valid);
+  const avg = valid.reduce((sum, value) => sum + value, 0) / valid.length;
+  return `最低 ${Math.round(best)} ms / 平均 ${Math.round(avg)} ms`;
+}
+
+function measureWebSocketLatency(): Promise<{ connectMs: number; roundTripMs: number }> {
+  return new Promise((resolve, reject) => {
+    const started = performance.now();
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/ping`);
+    const timeout = window.setTimeout(() => {
+      socket.close();
+      reject(new Error("WebSocket 测试超时"));
+    }, 5000);
+    let connectedAt = 0;
+    socket.addEventListener("open", () => {
+      connectedAt = performance.now();
+      socket.send(JSON.stringify({ type: "ping", at: Date.now() }));
+    });
+    socket.addEventListener("message", () => {
+      const ended = performance.now();
+      window.clearTimeout(timeout);
+      socket.close();
+      resolve({ connectMs: connectedAt - started, roundTripMs: ended - connectedAt });
+    });
+    socket.addEventListener("error", () => {
+      window.clearTimeout(timeout);
+      reject(new Error("WebSocket 连接失败"));
+    });
+  });
+}
+
+function LatencyTester() {
+  const [open, setOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [samples, setSamples] = useState<LatencySample[]>([]);
+  const [error, setError] = useState("");
+  const runTest = async () => {
+    if (running) return;
+    setRunning(true);
+    setError("");
+    const nextSamples: LatencySample[] = [];
+    for (let index = 1; index <= 5; index += 1) {
+      let httpMs: number | null = null;
+      let wsConnectMs: number | null = null;
+      let wsRoundTripMs: number | null = null;
+      try {
+        const httpStarted = performance.now();
+        await api.ping();
+        httpMs = performance.now() - httpStarted;
+      } catch (err: any) {
+        setError(err?.message ?? "HTTP 测试失败");
+      }
+      try {
+        const ws = await measureWebSocketLatency();
+        wsConnectMs = ws.connectMs;
+        wsRoundTripMs = ws.roundTripMs;
+      } catch (err: any) {
+        setError(err?.message ?? "WebSocket 测试失败");
+      }
+      nextSamples.push({ id: Date.now() + index, httpMs, wsConnectMs, wsRoundTripMs });
+      setSamples([...nextSamples]);
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+    setRunning(false);
+  };
+  return (
+    <section className="latency-panel">
+      <div className="latency-head">
+        <div>
+          <strong>延迟测试</strong>
+          <span>切换 VPN/节点后重新测试，重点看 WebSocket 往返。</span>
+        </div>
+        <div className="actions">
+          <button className="ghost" onClick={() => setOpen((value) => !value)}>{open ? "收起" : "展开"}</button>
+          {open && <button onClick={runTest} disabled={running}>{running ? "测试中" : "开始测试"}</button>}
+        </div>
+      </div>
+      {open && (
+        <>
+          {error && <p className="error">{error}</p>}
+          <div className="latency-summary">
+            <span>HTTP: {latencyStats(samples.map((sample) => sample.httpMs))}</span>
+            <span>WS 建连: {latencyStats(samples.map((sample) => sample.wsConnectMs))}</span>
+            <span>WS 往返: {latencyStats(samples.map((sample) => sample.wsRoundTripMs))}</span>
+          </div>
+          <div className="latency-table">
+            <span>次数</span>
+            <span>HTTP</span>
+            <span>WS 建连</span>
+            <span>WS 往返</span>
+            {samples.map((sample, index) => (
+              <React.Fragment key={sample.id}>
+                <span>#{index + 1}</span>
+                <span>{formatLatency(sample.httpMs)}</span>
+                <span>{formatLatency(sample.wsConnectMs)}</span>
+                <span>{formatLatency(sample.wsRoundTripMs)}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -291,6 +425,7 @@ function Projects({ user }: { user: User }) {
         <button onClick={load}><RefreshCcw size={16} />刷新</button>
       </div>
       <PwaControls />
+      <LatencyTester />
       {error && <p className="error">{error}</p>}
       <div className="project-list">
         {projects.map((project) => (
@@ -338,6 +473,7 @@ function TtydFramePage() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
   const pageRef = useRef<HTMLElement>(null);
+  useAndroidOrientationLock();
   useEffect(() => {
     const virtualKeyboard = (navigator as Navigator & { virtualKeyboard?: VirtualKeyboardLike }).virtualKeyboard;
     const syncVisibleArea = () => {
