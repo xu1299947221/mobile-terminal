@@ -161,6 +161,32 @@ systemctl --user restart mobile-terminal
 journalctl --user -u mobile-terminal --no-pager -n 120
 ```
 
+查看 tmux 会话：
+
+```bash
+tmux ls
+```
+
+进入某个项目对应的 tmux 会话：
+
+```bash
+tmux attach -t mt_connect
+```
+
+从 tmux 退回服务器普通终端，并保持会话继续运行：
+
+```text
+Ctrl + b
+松开
+再按 d
+```
+
+如果快捷键不生效，也可以在 tmux 里执行：
+
+```bash
+tmux detach-client
+```
+
 Docker 一键启动：
 
 ```bash

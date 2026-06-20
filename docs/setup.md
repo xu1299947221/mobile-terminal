@@ -184,6 +184,64 @@ tmux 检查：
 tmux list-sessions
 ```
 
+## tmux 会话进入和退出
+
+每个项目会绑定一个持久 `tmux` 会话。手机端、`ttyd` 备用终端和服务器上手动 attach 进去看到的是同一个会话。
+
+查看当前所有 tmux 会话：
+
+```bash
+tmux ls
+```
+
+进入指定会话：
+
+```bash
+tmux attach -t mt_connect
+```
+
+也可以使用短命令：
+
+```bash
+tmux a -t mt_connect
+```
+
+进入后，如果只想退回服务器原来的 shell，并保持里面的 Codex、Claude、shell 命令继续运行，使用 detach：
+
+```text
+Ctrl + b
+松开
+再按 d
+```
+
+成功后通常会看到：
+
+```text
+[detached (from session mt_connect)]
+```
+
+如果快捷键不生效，可以在 tmux 里面直接执行：
+
+```bash
+tmux detach-client
+```
+
+也可以从另一个服务器终端把某个会话上的客户端 detach 掉：
+
+```bash
+tmux detach-client -s mt_connect
+```
+
+这些方式只会断开当前查看窗口，不会停止 tmux 会话里的程序。
+
+不要用下面这些命令退出，除非你真的想结束会话或里面的 shell：
+
+```text
+exit
+Ctrl + d
+tmux kill-session
+```
+
 ## 当前默认项目
 
 开发环境里已经创建了一个默认项目：
