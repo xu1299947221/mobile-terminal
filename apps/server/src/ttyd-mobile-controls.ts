@@ -310,11 +310,12 @@ function mobileControls(projectId: string): string {
       };
     }
     if (focused && window.visualViewport) {
+      var visibleBottom = Math.min(window.innerHeight, (window.visualViewport.offsetTop || 0) + window.visualViewport.height);
       return {
-        left: window.visualViewport.offsetLeft || 0,
-        top: window.visualViewport.offsetTop || 0,
-        width: window.visualViewport.width,
-        height: window.visualViewport.height
+        left: 0,
+        top: 0,
+        width: window.innerWidth,
+        height: Math.max(160, visibleBottom)
       };
     }
     return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
