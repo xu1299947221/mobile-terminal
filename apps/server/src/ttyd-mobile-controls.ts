@@ -43,14 +43,14 @@ function mobileControls(projectId: string): string {
     padding: 0 !important;
     overflow: hidden;
     overscroll-behavior: none;
-    touch-action: manipulation;
+    touch-action: none;
   }
   body { padding-bottom: 0 !important; }
   .xterm-viewport {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    touch-action: manipulation;
+    touch-action: none;
   }
   body.mt-keyboard-fit #terminal-container,
   body.mt-ios-keyboard-fit #terminal-container {
@@ -641,10 +641,8 @@ function mobileControls(projectId: string): string {
 
   function installViewportScrollBridge() {
     var lastY = null;
-    var touchStartY = null;
     var pendingPixels = 0;
     var pixelsPerLine = 18;
-    var dragThreshold = 8;
     function scrollTerminal(deltaY) {
       pendingPixels += deltaY;
       var lines = pendingPixels > 0 ? Math.floor(pendingPixels / pixelsPerLine) : Math.ceil(pendingPixels / pixelsPerLine);
@@ -661,27 +659,23 @@ function mobileControls(projectId: string): string {
       if (!shouldOwnTouch(event)) return;
       if (!event.touches || !event.touches.length) return;
       lastY = event.touches[0].clientY;
-      touchStartY = lastY;
       pendingPixels = 0;
     }, { capture: true, passive: true });
     document.addEventListener("touchmove", function (event) {
       if (!shouldOwnTouch(event)) return;
-      if (lastY === null || !event.touches || !event.touches.length) return;
-      var nextY = event.touches[0].clientY;
-      if (touchStartY !== null && Math.abs(nextY - touchStartY) < dragThreshold) return;
       event.preventDefault();
+      if (lastY === null || !event.touches || !event.touches.length) return;
       if (!gestureScrollEnabled) return;
+      var nextY = event.touches[0].clientY;
       scrollTerminal(nextY - lastY);
       lastY = nextY;
     }, { capture: true, passive: false });
     document.addEventListener("touchend", function () {
       lastY = null;
-      touchStartY = null;
       pendingPixels = 0;
     }, { capture: true, passive: true });
     document.addEventListener("touchcancel", function () {
       lastY = null;
-      touchStartY = null;
       pendingPixels = 0;
     }, { capture: true, passive: true });
   }
