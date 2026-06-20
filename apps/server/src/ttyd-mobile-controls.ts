@@ -249,7 +249,7 @@ function mobileControls(projectId: string): string {
     <div class="mt-row mt-row-3">
       <button class="mt-key" type="button" data-scroll="up">历史↑</button>
       <button class="mt-key" type="button" data-scroll="down">历史↓</button>
-      <button id="mt-ttyd-gesture-toggle" class="mt-key" type="button">滑动开</button>
+      <button id="mt-ttyd-gesture-toggle" class="mt-key" type="button">滑动关</button>
     </div>
   </div>
 </div>
@@ -268,7 +268,7 @@ function mobileControls(projectId: string): string {
   var input = document.getElementById("mt-ttyd-input");
   var storageKey = "mt-ttyd-controller:" + location.pathname;
   var gestureStorageKey = storageKey + ":gesture-scroll";
-  var gestureScrollEnabled = localStorage.getItem(gestureStorageKey) !== "off";
+  var gestureScrollEnabled = localStorage.getItem(gestureStorageKey) === "on";
   var supportsVisualViewport = Boolean(window.visualViewport);
   var supportsVirtualKeyboard = Boolean(navigator.virtualKeyboard);
   var keyboardState = "idle";
