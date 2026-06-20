@@ -293,9 +293,6 @@ function mobileControls(projectId: string): string {
   var statusTimer = null;
   var lastLayoutWidth = window.innerWidth;
   var lastLayoutHeight = window.innerHeight;
-  var lastTerminalActivity = Date.now();
-  var lastInputSendAt = 0;
-  var terminalObserver = null;
   var autoReconnectStorageKey = storageKey + ":auto-reconnect-at";
   var specialKeys = {
     Enter: "Enter",
@@ -564,23 +561,6 @@ function mobileControls(projectId: string): string {
     }, { capture: true });
   }
 
-  function recordTerminalInput() {
-    lastInputSendAt = Date.now();
-    scheduleConnectionCheck("输入已发送但终端未更新，正在重连...", 7500);
-  }
-
-  function installNativeInputWatch() {
-    document.addEventListener("beforeinput", function (event) {
-      if (!isNativeXtermInput(event.target)) return;
-      recordTerminalInput();
-    }, { capture: true });
-    document.addEventListener("keydown", function (event) {
-      if (!isNativeXtermInput(event.target)) return;
-      if (event.key === "Shift" || event.key === "Control" || event.key === "Alt" || event.key === "Meta") return;
-      recordTerminalInput();
-    }, { capture: true });
-  }
-
   function resetCaptureInput() {
     input.value = sentinel;
     try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
@@ -591,7 +571,6 @@ function mobileControls(projectId: string): string {
   }
 
   async function postInput(data, kind) {
-    recordTerminalInput();
     var response = await fetch("/api/projects/" + encodeURIComponent(projectId) + "/input", {
       method: "POST",
       credentials: "include",
@@ -650,45 +629,10 @@ function mobileControls(projectId: string): string {
     return /press\\s+.*reconnect/i.test(text);
   }
 
-  function markTerminalActivity() {
-    lastTerminalActivity = Date.now();
-  }
-
-  function terminalTarget() {
-    return document.querySelector(".xterm-rows") ||
-      document.querySelector(".xterm-screen") ||
-      document.querySelector(".xterm") ||
-      document.getElementById("terminal") ||
-      document.getElementById("terminal-container") ||
-      document.body;
-  }
-
-  function installTerminalActivityMonitor() {
-    var target = terminalTarget();
-    if (!target || !window.MutationObserver) {
-      window.setTimeout(installTerminalActivityMonitor, 1000);
-      return;
-    }
-    if (terminalObserver) terminalObserver.disconnect();
-    terminalObserver = new MutationObserver(function (mutations) {
-      for (var i = 0; i < mutations.length; i += 1) {
-        if (controller.contains(mutations[i].target)) continue;
-        markTerminalActivity();
-        return;
-      }
-    });
-    terminalObserver.observe(target, { childList: true, characterData: true, subtree: true });
-    markTerminalActivity();
-  }
-
   function checkTtydConnection(reason) {
     if (document.hidden) return;
     if (hasTtydReconnectPrompt()) {
       autoReconnectTtyd("检测到 ttyd 断开，正在重连...");
-      return;
-    }
-    if (lastInputSendAt && Date.now() - lastInputSendAt > 7000 && lastTerminalActivity + 3000 < lastInputSendAt) {
-      autoReconnectTtyd(reason || "终端回显超时，正在重连...");
     }
   }
 
@@ -984,14 +928,7 @@ function mobileControls(projectId: string): string {
   tryEnableVirtualKeyboard();
   setModeStatus();
   installNativeInputFit();
-  installNativeInputWatch();
   installViewportScrollBridge();
-  installTerminalActivityMonitor();
-  window.setInterval(function () {
-    if (!document.hidden && hasTtydReconnectPrompt()) {
-      autoReconnectTtyd("检测到 ttyd 断开，正在重连...");
-    }
-  }, 5000);
   resetCaptureInput();
   restorePosition();
 })();
