@@ -11,7 +11,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ProjectPermission } from "@mobile-terminal/shared";
 import { config } from "./config.js";
 import { spawnDetached } from "./process.js";
-import { ensureSession, type ProjectRow } from "./tmux.js";
+import { ensureSession, hasSession, type ProjectRow } from "./tmux.js";
 import { injectMobileTtydControls } from "./ttyd-mobile-controls.js";
 
 type TtydProcess = {
@@ -44,7 +44,13 @@ function allocatePort(): number {
 
 export async function ensureTtyd(project: ProjectRow): Promise<TtydProcess> {
   const current = running.get(project.id);
-  if (current && !current.process.killed) return current;
+  if (current && isProcessAlive(current.process) && await hasSession(project.tmux_session) && await canConnect(current.port)) {
+    return current;
+  }
+  if (current) {
+    current.process.kill("SIGTERM");
+    running.delete(project.id);
+  }
 
   await ensureSession(project);
   const port = allocatePort();
@@ -82,6 +88,10 @@ export async function ensureTtyd(project: ProjectRow): Promise<TtydProcess> {
   });
   await waitForPort(port);
   return item;
+}
+
+function isProcessAlive(child: ChildProcess): boolean {
+  return !child.killed && child.exitCode === null && child.signalCode === null;
 }
 
 async function waitForPort(port: number): Promise<void> {

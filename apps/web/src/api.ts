@@ -44,9 +44,9 @@ export const api = {
   createProject: (body: unknown) => request<{ project: ProjectWithPermission }>("/api/projects", { method: "POST", body: JSON.stringify(body) }),
   updateProject: (id: string, body: unknown) => request<{ project: ProjectWithPermission }>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteProject: (id: string) => request<{ ok: true }>(`/api/projects/${id}`, { method: "DELETE" }),
-  ensureSession: (id: string) => request<{ ok: true }>(`/api/projects/${id}/session/ensure`, { method: "POST" }),
+  ensureSession: (id: string) => request<{ ok: true }>(`/api/projects/${id}/session/ensure`, { method: "POST", body: JSON.stringify({}) }),
   startCommand: (id: string, command: string) => request<{ ok: true }>(`/api/projects/${id}/session/start`, { method: "POST", body: JSON.stringify({ command }) }),
-  stopSession: (id: string) => request<{ ok: true }>(`/api/projects/${id}/session/stop`, { method: "POST" }),
+  stopSession: (id: string) => request<{ ok: true }>(`/api/projects/${id}/session/stop`, { method: "POST", body: JSON.stringify({}) }),
   output: (id: string) => request<{ output: string }>(`/api/projects/${id}/output`),
   sendInput: (id: string, data: string, kind: "raw" | "task" | "key") =>
     request<{ ok: true }>(`/api/projects/${id}/input`, { method: "POST", body: JSON.stringify({ data, kind }) }),
