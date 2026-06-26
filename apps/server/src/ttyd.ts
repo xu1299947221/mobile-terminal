@@ -47,8 +47,7 @@ export async function ensureTtyd(project: ProjectRow): Promise<TtydProcess> {
     return current;
   }
   if (current) {
-    current.process.kill("SIGTERM");
-    running.delete(project.id);
+    clearTtyd(project.id);
   }
 
   await ensureSession(project);
@@ -104,26 +103,32 @@ async function waitForHttp(port: number): Promise<void> {
 
 function canFetchHttp(port: number, timeoutMs = 800): Promise<boolean> {
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok);
+    };
     const request = http.request(
       {
         hostname: "127.0.0.1",
         port,
-        method: "GET",
+        method: "HEAD",
         path: "/",
         headers: { "accept-encoding": "identity", connection: "close" },
         timeout: timeoutMs
       },
       (response) => {
-        response.resume();
-        resolve(Boolean(response.statusCode && response.statusCode >= 200 && response.statusCode < 500));
+        response.destroy();
+        finish(Boolean(response.statusCode && response.statusCode >= 200 && response.statusCode < 500));
       }
     );
     request.once("timeout", () => {
       request.destroy();
-      resolve(false);
+      finish(false);
     });
     request.once("error", () => {
-      resolve(false);
+      finish(false);
     });
     request.end();
   });
@@ -149,6 +154,17 @@ export function ttydStatus(projectId: string): { port: number; startedAt: string
   const item = running.get(projectId);
   if (!item) return null;
   return { port: item.port, startedAt: item.startedAt };
+}
+
+export async function ttydHealth(project: ProjectRow): Promise<{ ok: true; port: number; startedAt: string; restarted: boolean }> {
+  const current = running.get(project.id);
+  const item = await ensureTtyd(project);
+  return {
+    ok: true,
+    port: item.port,
+    startedAt: item.startedAt,
+    restarted: !current || current.startedAt !== item.startedAt || current.port !== item.port
+  };
 }
 
 export async function proxyTtyd(
