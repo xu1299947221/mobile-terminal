@@ -28,12 +28,7 @@ function appendBeforeBody(html: string, controls: string): string {
   return `${html}${controls}`;
 }
 
-type TtydClientInfo = {
-  port: number;
-  startedAt: string;
-};
-
-function mobileControls(projectId: string, ttyd: TtydClientInfo): string {
+function mobileControls(projectId: string): string {
   return `
 <style>
   :root {
@@ -285,8 +280,6 @@ function mobileControls(projectId: string, ttyd: TtydClientInfo): string {
 <script>
 (function () {
   var projectId = ${JSON.stringify(projectId)};
-  var initialTtydPort = ${JSON.stringify(ttyd.port)};
-  var initialTtydStartedAt = ${JSON.stringify(ttyd.startedAt)};
   var controller = document.getElementById("mt-ttyd-controller");
   var drag = document.getElementById("mt-ttyd-drag");
   var keyboardButton = document.getElementById("mt-ttyd-keyboard");
@@ -706,9 +699,9 @@ function mobileControls(projectId: string, ttyd: TtydClientInfo): string {
       return response.json();
     }).then(function (health) {
       healthCheckFailures = 0;
-      if (health && (health.restarted || health.port !== initialTtydPort || health.startedAt !== initialTtydStartedAt)) {
-        markDisconnected("ttyd 已切换，正在自动重连...");
-        autoReload("ttyd 已切换，正在自动重连...");
+      if (health && health.restarted) {
+        markDisconnected("ttyd 已重建，正在自动重连...");
+        autoReload("ttyd 已重建，正在自动重连...");
       }
     }).catch(function () {
       healthCheckFailures += 1;
@@ -993,14 +986,10 @@ function mobileControls(projectId: string, ttyd: TtydClientInfo): string {
     reconnectTtyd();
   }, { capture: true });
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) {
-      scheduleConnectionCheck("页面恢复后检测到连接异常，正在重连...", 800);
-      window.setTimeout(checkTtydHealth, 800);
-    }
+    if (!document.hidden) scheduleConnectionCheck("页面恢复后检测到连接异常，正在重连...", 800);
   });
   window.addEventListener("pageshow", function () {
     scheduleConnectionCheck("页面恢复后检测到连接异常，正在重连...", 800);
-    window.setTimeout(checkTtydHealth, 800);
   });
 
   document.querySelectorAll("#mt-ttyd-controller [data-key]").forEach(function (button) {
@@ -1051,6 +1040,6 @@ function mobileControls(projectId: string, ttyd: TtydClientInfo): string {
 </script>`;
 }
 
-export function injectMobileTtydControls(html: string, projectId: string, ttyd: TtydClientInfo): string {
-  return appendBeforeBody(injectViewportMeta(html), mobileControls(projectId, ttyd));
+export function injectMobileTtydControls(html: string, projectId: string): string {
+  return appendBeforeBody(injectViewportMeta(html), mobileControls(projectId));
 }

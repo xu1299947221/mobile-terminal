@@ -1,5 +1,4 @@
 import type { ChildProcess } from "node:child_process";
-import { execFile } from "node:child_process";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import httpProxy from "http-proxy";
 import http from "node:http";
@@ -50,7 +49,6 @@ export async function ensureTtyd(project: ProjectRow): Promise<TtydProcess> {
   if (current) {
     clearTtyd(project.id);
   }
-  await killStaleTtydForSession(project.tmux_session);
 
   await ensureSession(project);
   const port = allocatePort();
@@ -152,33 +150,6 @@ function clearTtyd(projectId: string): void {
   running.delete(projectId);
 }
 
-function killStaleTtydForSession(session: string): Promise<void> {
-  return new Promise((resolve) => {
-    execFile("ps", ["-eo", "pid=,comm=,args="], (error, stdout) => {
-      if (error || !stdout.trim()) {
-        resolve();
-        return;
-      }
-      const pids = stdout
-        .split("\n")
-        .map((line) => line.trim().match(/^(\d+)\s+(\S+)\s+(.+)$/))
-        .filter((match): match is RegExpMatchArray => Boolean(match))
-        .filter((match) => match[2] === "ttyd" && match[3].includes(`tmux attach -t ${session}`))
-        .map((match) => match[1]);
-      if (pids.length === 0) {
-        resolve();
-        return;
-      }
-      execFile("kill", ["-TERM", ...pids], () => {
-        setTimeout(() => {
-          execFile("kill", ["-KILL", ...pids], () => undefined);
-        }, 1500).unref();
-        resolve();
-      });
-    });
-  });
-}
-
 export function ttydStatus(projectId: string): { port: number; startedAt: string } | null {
   const item = running.get(projectId);
   if (!item) return null;
@@ -218,7 +189,7 @@ export async function proxyTtyd(
   const target = `http://127.0.0.1:${item.port}`;
   request.raw.url = rewriteUrl(request.raw.url, slug);
   if (request.raw.method === "GET" && (request.raw.url === "/" || request.raw.url?.startsWith("/?"))) {
-    await proxyTtydHtml(request, reply, target, project.id, { port: item.port, startedAt: item.startedAt });
+    await proxyTtydHtml(request, reply, target, project.id);
     return;
   }
   reply.hijack();
@@ -230,13 +201,7 @@ export async function proxyTtyd(
   });
 }
 
-function proxyTtydHtml(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  target: string,
-  projectId: string,
-  ttyd: { port: number; startedAt: string }
-): Promise<void> {
+function proxyTtydHtml(request: FastifyRequest, reply: FastifyReply, target: string, projectId: string): Promise<void> {
   return new Promise((resolve) => {
     const targetUrl = new URL(target);
     const upstream = http.request(
@@ -266,7 +231,7 @@ function proxyTtydHtml(
             .header("Expires", "0")
             .header("X-Frame-Options", "SAMEORIGIN")
             .type("text/html; charset=utf-8")
-            .send(injectMobileTtydControls(html, projectId, ttyd));
+            .send(injectMobileTtydControls(html, projectId));
           resolve();
         });
       }
