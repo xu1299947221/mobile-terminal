@@ -306,6 +306,8 @@ function mobileControls(projectId: string): string {
   var statusTimer = null;
   var stickyStatus = "";
   var disconnectObserver = null;
+  var autoReconnectTimer = null;
+  var autoReconnectStorageKey = storageKey + ":auto-reconnect-at";
   var lastLayoutWidth = window.innerWidth;
   var lastLayoutHeight = window.innerHeight;
   var specialKeys = {
@@ -643,11 +645,32 @@ function mobileControls(projectId: string): string {
   function markDisconnected(reason) {
     controller.classList.add("mt-disconnected");
     showStatus(reason || "连接已断开，点重连", true);
+    scheduleAutoReconnect();
   }
 
   function clearDisconnected() {
     controller.classList.remove("mt-disconnected");
     clearStickyStatus();
+    if (autoReconnectTimer) {
+      window.clearTimeout(autoReconnectTimer);
+      autoReconnectTimer = null;
+    }
+  }
+
+  function scheduleAutoReconnect() {
+    if (autoReconnectTimer) return;
+    var now = Date.now();
+    var previous = Number(sessionStorage.getItem(autoReconnectStorageKey) || "0");
+    if (previous && now - previous < 15000) return;
+    autoReconnectTimer = window.setTimeout(function () {
+      autoReconnectTimer = null;
+      if (document.hidden || !hasTtydReconnectPrompt()) return;
+      sessionStorage.setItem(autoReconnectStorageKey, String(Date.now()));
+      showStatus("连接已断开，正在自动重连...", true);
+      window.setTimeout(function () {
+        window.location.reload();
+      }, 120);
+    }, 1200);
   }
 
   function checkTtydConnection(reason) {
