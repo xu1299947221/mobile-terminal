@@ -152,6 +152,19 @@ function mobileControls(projectId: string): string {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  #mt-ttyd-controller.mt-disconnected {
+    border-color: #f87171;
+    box-shadow: 0 16px 34px rgba(127, 29, 29, 0.42);
+  }
+  #mt-ttyd-controller.mt-disconnected #mt-ttyd-status {
+    color: #fecaca;
+    font-weight: 700;
+  }
+  #mt-ttyd-controller.mt-disconnected #mt-ttyd-reconnect {
+    background: #dc2626;
+    border-color: #fecaca;
+    color: #ffffff;
+  }
   .mt-panel {
     display: none;
     gap: 6px;
@@ -291,9 +304,10 @@ function mobileControls(projectId: string): string {
   var ignoreNextInput = false;
   var sentinel = "\\u200b";
   var statusTimer = null;
+  var stickyStatus = "";
+  var disconnectObserver = null;
   var lastLayoutWidth = window.innerWidth;
   var lastLayoutHeight = window.innerHeight;
-  var autoReconnectStorageKey = storageKey + ":auto-reconnect-at";
   var specialKeys = {
     Enter: "Enter",
     Tab: "Tab",
@@ -306,12 +320,19 @@ function mobileControls(projectId: string): string {
     End: "End"
   };
 
-  function showStatus(text) {
+  function showStatus(text, sticky) {
+    if (sticky) stickyStatus = text || "";
     status.textContent = text || "";
     if (statusTimer) clearTimeout(statusTimer);
-    if (text) statusTimer = setTimeout(function () {
-      if (status.textContent === text) status.textContent = "";
+    if (text && !sticky) statusTimer = setTimeout(function () {
+      if (status.textContent === text) status.textContent = stickyStatus || "";
     }, 1800);
+  }
+
+  function clearStickyStatus() {
+    stickyStatus = "";
+    if (statusTimer) clearTimeout(statusTimer);
+    status.textContent = "";
   }
 
   function setModeStatus() {
@@ -607,21 +628,11 @@ function mobileControls(projectId: string): string {
   }
 
   function reconnectTtyd() {
+    clearDisconnected();
     showStatus("正在重连...");
     window.setTimeout(function () {
       window.location.reload();
     }, 60);
-  }
-
-  function autoReconnectTtyd(reason) {
-    var now = Date.now();
-    var previous = Number(sessionStorage.getItem(autoReconnectStorageKey) || "0");
-    if (previous && now - previous < 15000) return;
-    sessionStorage.setItem(autoReconnectStorageKey, String(now));
-    showStatus(reason || "连接异常，正在重连...");
-    window.setTimeout(function () {
-      window.location.reload();
-    }, 350);
   }
 
   function hasTtydReconnectPrompt() {
@@ -629,10 +640,20 @@ function mobileControls(projectId: string): string {
     return /press\\s+.*reconnect/i.test(text);
   }
 
+  function markDisconnected(reason) {
+    controller.classList.add("mt-disconnected");
+    showStatus(reason || "连接已断开，点重连", true);
+  }
+
+  function clearDisconnected() {
+    controller.classList.remove("mt-disconnected");
+    clearStickyStatus();
+  }
+
   function checkTtydConnection(reason) {
     if (document.hidden) return;
     if (hasTtydReconnectPrompt()) {
-      autoReconnectTtyd("检测到 ttyd 断开，正在重连...");
+      markDisconnected(reason || "连接已断开，点重连");
     }
   }
 
@@ -640,6 +661,19 @@ function mobileControls(projectId: string): string {
     window.setTimeout(function () {
       checkTtydConnection(reason);
     }, delay || 1200);
+  }
+
+  function installDisconnectPromptWatch() {
+    if (!window.MutationObserver || !document.body) {
+      window.setTimeout(installDisconnectPromptWatch, 1000);
+      return;
+    }
+    if (disconnectObserver) disconnectObserver.disconnect();
+    disconnectObserver = new MutationObserver(function () {
+      checkTtydConnection("连接已断开，点重连");
+    });
+    disconnectObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
+    scheduleConnectionCheck("连接已断开，点重连", 800);
   }
 
   var historyScrollInFlight = false;
@@ -929,6 +963,7 @@ function mobileControls(projectId: string): string {
   setModeStatus();
   installNativeInputFit();
   installViewportScrollBridge();
+  installDisconnectPromptWatch();
   resetCaptureInput();
   restorePosition();
 })();
