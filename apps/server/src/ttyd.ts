@@ -3,7 +3,6 @@ import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import httpProxy from "http-proxy";
 import http from "node:http";
 import type { IncomingMessage } from "node:http";
-import net from "node:net";
 import type { Socket } from "node:net";
 import { nanoid } from "nanoid";
 import WebSocket from "ws";
@@ -44,7 +43,7 @@ function allocatePort(): number {
 
 export async function ensureTtyd(project: ProjectRow): Promise<TtydProcess> {
   const current = running.get(project.id);
-  if (current && isProcessAlive(current.process) && await hasSession(project.tmux_session) && await canConnect(current.port)) {
+  if (current && isProcessAlive(current.process) && await hasSession(project.tmux_session) && await canFetchHttp(current.port)) {
     return current;
   }
   if (current) {
@@ -86,7 +85,7 @@ export async function ensureTtyd(project: ProjectRow): Promise<TtydProcess> {
       running.delete(project.id);
     }
   });
-  await waitForPort(port);
+  await waitForHttp(port);
   return item;
 }
 
@@ -94,34 +93,55 @@ function isProcessAlive(child: ChildProcess): boolean {
   return !child.killed && child.exitCode === null && child.signalCode === null;
 }
 
-async function waitForPort(port: number): Promise<void> {
+async function waitForHttp(port: number): Promise<void> {
   const deadline = Date.now() + 3000;
   while (Date.now() < deadline) {
-    if (await canConnect(port)) return;
+    if (await canFetchHttp(port)) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error(`ttyd 端口未就绪: ${port}`);
+  throw new Error(`ttyd HTTP 未就绪: ${port}`);
 }
 
-function canConnect(port: number): Promise<boolean> {
+function canFetchHttp(port: number, timeoutMs = 800): Promise<boolean> {
   return new Promise((resolve) => {
-    const socket = net.createConnection({ host: "127.0.0.1", port });
-    socket.once("connect", () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.once("error", () => resolve(false));
-    socket.setTimeout(500, () => {
-      socket.destroy();
+    const request = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        method: "GET",
+        path: "/",
+        headers: { "accept-encoding": "identity", connection: "close" },
+        timeout: timeoutMs
+      },
+      (response) => {
+        response.resume();
+        resolve(Boolean(response.statusCode && response.statusCode >= 200 && response.statusCode < 500));
+      }
+    );
+    request.once("timeout", () => {
+      request.destroy();
       resolve(false);
     });
+    request.once("error", () => {
+      resolve(false);
+    });
+    request.end();
   });
 }
 
 export function stopTtyd(projectId: string): void {
+  clearTtyd(projectId);
+}
+
+function clearTtyd(projectId: string): void {
   const item = running.get(projectId);
   if (!item) return;
   item.process.kill("SIGTERM");
+  setTimeout(() => {
+    if (isProcessAlive(item.process)) {
+      item.process.kill("SIGKILL");
+    }
+  }, 1500).unref();
   running.delete(projectId);
 }
 
@@ -200,7 +220,11 @@ function proxyTtydHtml(request: FastifyRequest, reply: FastifyReply, target: str
         });
       }
     );
+    upstream.setTimeout(3000, () => {
+      upstream.destroy(new Error("ttyd HTTP 响应超时"));
+    });
     upstream.on("error", (error) => {
+      clearTtyd(projectId);
       reply.code(502).type("text/plain; charset=utf-8").send(error.message);
       resolve();
     });
