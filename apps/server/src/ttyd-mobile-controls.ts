@@ -308,9 +308,6 @@ function mobileControls(projectId: string): string {
   var disconnectObserver = null;
   var autoReconnectTimer = null;
   var autoReconnectStorageKey = storageKey + ":auto-reconnect-at";
-  var healthCheckInFlight = false;
-  var healthCheckTimer = null;
-  var healthCheckFailures = 0;
   var lastLayoutWidth = window.innerWidth;
   var lastLayoutHeight = window.innerHeight;
   var specialKeys = {
@@ -676,49 +673,6 @@ function mobileControls(projectId: string): string {
     }, 1200);
   }
 
-  function autoReload(reason) {
-    var now = Date.now();
-    var previous = Number(sessionStorage.getItem(autoReconnectStorageKey) || "0");
-    if (previous && now - previous < 15000) return;
-    sessionStorage.setItem(autoReconnectStorageKey, String(now));
-    showStatus(reason || "正在自动重连...", true);
-    window.setTimeout(function () {
-      window.location.reload();
-    }, 120);
-  }
-
-  function checkTtydHealth() {
-    if (document.hidden || healthCheckInFlight) return;
-    healthCheckInFlight = true;
-    fetch("/api/projects/" + encodeURIComponent(projectId) + "/ttyd/health", {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store"
-    }).then(function (response) {
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      return response.json();
-    }).then(function (health) {
-      healthCheckFailures = 0;
-      if (health && health.restarted) {
-        markDisconnected("ttyd 已重建，正在自动重连...");
-        autoReload("ttyd 已重建，正在自动重连...");
-      }
-    }).catch(function () {
-      healthCheckFailures += 1;
-      markDisconnected("ttyd 健康检查失败 " + healthCheckFailures + "/2");
-      if (healthCheckFailures >= 2) {
-        autoReload("ttyd 健康检查失败，正在自动重连...");
-      }
-    }).finally(function () {
-      healthCheckInFlight = false;
-    });
-  }
-
-  function installTtydHealthCheck() {
-    healthCheckTimer = window.setInterval(checkTtydHealth, 30000);
-    window.setTimeout(checkTtydHealth, 5000);
-  }
-
   function checkTtydConnection(reason) {
     if (document.hidden) return;
     if (hasTtydReconnectPrompt()) {
@@ -1033,7 +987,6 @@ function mobileControls(projectId: string): string {
   installNativeInputFit();
   installViewportScrollBridge();
   installDisconnectPromptWatch();
-  installTtydHealthCheck();
   resetCaptureInput();
   restorePosition();
 })();

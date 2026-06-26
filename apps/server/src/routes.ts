@@ -30,7 +30,7 @@ import {
 import { can, managedProjectIds } from "./permissions.js";
 import { assertProjectAccess, getProjectById, getProjectBySlug, mapProject, validateDirectory, visibleProjects } from "./projects.js";
 import { capturePane, ensureSession, killSession, scrollHistory, startCommand } from "./tmux.js";
-import { proxyTtyd, proxyTtydWebSocket, stopTtyd, ttydHealth, ttydStatus } from "./ttyd.js";
+import { proxyTtyd, proxyTtydWebSocket, stopTtyd, ttydStatus } from "./ttyd.js";
 import { commandExists } from "./process.js";
 import { sendTerminalInput } from "./terminal-input.js";
 import { checkLoginRateLimit, isAllowedOrigin, recordLoginFailure, recordLoginSuccess } from "./security.js";
@@ -363,19 +363,6 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       db.prepare("UPDATE projects SET status = 'idle', updated_at = ? WHERE id = ?").run(nowIso(), projectId);
       audit({ actorUserId: request.user!.id, actorUsername: request.user!.username, action: "session_stopped", projectId });
       return { ok: true };
-    } catch (error) {
-      handleError(error, reply);
-    }
-  });
-
-  app.get("/api/projects/:projectId/ttyd/health", async (request, reply) => {
-    if (!requireAuth(request, reply)) return;
-    try {
-      const { projectId } = request.params as { projectId: string };
-      const project = getProjectById(projectId);
-      if (!project) return reply.code(404).send({ error: "not_found", message: "项目不存在" });
-      assertProjectAccess(request.user!, projectId, "write");
-      return await ttydHealth(project);
     } catch (error) {
       handleError(error, reply);
     }
